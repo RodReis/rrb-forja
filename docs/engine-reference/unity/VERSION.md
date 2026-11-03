@@ -3,7 +3,7 @@
 | Field | Value |
 |-------|-------|
 | **Engine Version** | Unity 6.3 LTS |
-| **Installed at pin time** | 6000.3.27f1 (6.3 LTS line, one patch ahead of the latest editor documented below; probed 2026-11-02). 6000.5.5f1 (6.5) is also installed but is not the pin. Hub modules present: Windows and Linux standalone only. Android and iOS build support NOT installed. |
+| **Installed at pin time** | 6000.3.27f1 (6.3 LTS line, one patch ahead of the latest editor documented below; probed 2026-11-02). 6000.5.5f1 (6.5) is also installed but is not the pin. Hub modules present (re-checked 2026-11-03 in `Editor/Data/PlaybackEngines` of 6000.3.27f1): Windows and Linux standalone, and Android (`AndroidPlayer` with SDK, NDK, OpenJDK and the IL2CPP variation). iOS build support NOT installed. The reference test device is not verified. |
 | **Release Date** | December 2025 |
 | **Latest editor on the pinned line** | 6000.3.26f1 (Oct 8, 2026) |
 | **Project Pinned** | 2026-02-13 |

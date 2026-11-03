@@ -9,7 +9,7 @@
 
 ## Overview
 
-Forja das Hordas é um RPG mobile de ação em que o jogador descobre uma build em fases de horda e a sela de forma permanente. O escopo mecânico cobre três coisas ao mesmo tempo: um survivor de hordas (combate com um dedo, skill aleatória a cada level up), um sistema de identidade (o Grimório e o selamento) e um RPG de equipamento de MMO (Forja, sets por função, trindade de tanque, DPS, mago e healer). O índice enumera **39 sistemas** em 4 tiers: 20 de MVP, 7 de Vertical Slice, 9 de Alpha (o lançamento ajustado) e 3 de Full Vision (pós-lançamento). Os pilares que guiam a prioridade são: P1 *Sua build, sua assinatura*, P2 *Toda escolha pesa*, P3 *Cada função é indispensável*, P4 *Massacre com peso* e P5 *Ser a raça, não vestir a raça*, mais o Princípio de Negócio *Poder conquistado, não comprado*.
+Forja das Hordas é um RPG mobile de ação em que o jogador descobre uma build em fases de horda e a sela de forma permanente. O escopo mecânico cobre três coisas ao mesmo tempo: um survivor de hordas (combate com um dedo, skill aleatória a cada level up), um sistema de identidade (o Grimório e o selamento) e um RPG de equipamento de MMO (Forja, sets por função, trindade de tanque, DPS, mago e healer). O índice enumera **40 sistemas** em 4 tiers: 19 de MVP, 7 de Vertical Slice, 10 de Alpha (o lançamento ajustado) e 4 de Full Vision (pós-lançamento). Os pilares que guiam a prioridade são: P1 *Sua build, sua assinatura*, P2 *Toda escolha pesa*, P3 *Cada função é indispensável*, P4 *Massacre com peso* e P5 *Ser a raça, não vestir a raça*, mais o Princípio de Negócio *Poder conquistado, não comprado*.
 
 O desenho tem um núcleo estreito e arriscado: a simulação determinística (#2), o Grimório (#16) e o Selamento (#17). Quase tudo o mais depende de um dos três ou os alimenta. O resto é conteúdo e acabamento sobre esse núcleo, e a economia (#26, #27) é o ponto em que o Princípio de Negócio vira regra de produto.
 
@@ -45,7 +45,7 @@ O desenho tem um núcleo estreito e arriscado: a simulação determinística (#2
 
 **#14 Dungeons e trindade.** Dungeons com tanque, DPS, mago e healer preenchidos pelos heróis selados do jogador ou por um NPC com teto; fases de função (escoltar, proteger); affixes que dependem do controle do Mago. É onde o Pilar 3 só pode ser validado (a partir do Vertical Slice).
 
-**#15 Auto-battle e varredura.** Simulação determinística em conteúdo já vencido, com rendimento menor que o manual e dentro do teto diário. Nunca registra no Grimório, nunca conta vitória para o selo e nunca conta para o ranking.
+**#15 Varredura (Alpha).** Repete conteúdo já vencido e credita a recompensa dentro do teto diário, sem simular a fase. Sem energia, o teto sem varredura viraria tarefa diária. Nunca registra no Grimório, nunca conta vitória para o selo e nunca conta para o ranking. O auto-battle saiu para o #40.
 
 ### Progression: como o herói cresce e vira permanente
 
@@ -73,17 +73,17 @@ O desenho tem um núcleo estreito e arriscado: a simulação determinística (#2
 
 **#26 Economia e tetos (Vertical Slice).** Fontes, sumidouros, teto diário de recompensa, período do Livro e a auditoria do Princípio de Negócio. Passa ao Vertical Slice por decisão do Producer, porque a Forja de 5 raridades já precisa das regras de fonte e sumidouro. Os tetos continuam Alpha. É projetada depois de #24 e #25 e audita Reforja e Monetização quando elas existem; o valor do teto é dado em #1, sem API que as fontes chamem.
 
-**#27 Monetização e loja (Alpha).** Modelo F2P decidido (ver `design/business-model.md`): cosméticos de loja e capítulos como DLC no lançamento, passe de temporada só de cosméticos na 1ª temporada depois do lançamento, sem anúncios no lançamento, preço direto por SKU e sem moeda premium. Cresceu de M para L com o F2P.
+**#27 Monetização e loja (Alpha).** Modelo F2P decidido (ver `design/business-model.md`): todo o conteúdo de gameplay é grátis; a receita vem de cosméticos de loja (skins, transmogs e pets só de animação), com preço direto por SKU e sem moeda premium, e de um vídeo recompensado ao fim da partida que dobra só a moeda de jogo sem poder. O passe de temporada só de cosméticos fica para a 1ª temporada depois do lançamento. Cresceu de M para L com o F2P.
 
-**#38 Cosméticos e catálogo (inferido, Alpha).** Catálogo de loja e a família de cosméticos de conquista (ganha jogando, visualmente distinta dos de loja). Obedece às regras R1 e R2 de `design/business-model.md`: o cosmético nunca altera a leitura do jogo e conquista não se vende.
+**#38 Cosméticos e catálogo (inferido, Alpha).** Catálogo de loja (skins, transmogs temáticos e pets só de animação), a família de cosméticos de conquista (ganha jogando, visualmente distinta dos de loja) e os cosméticos comprados com a moeda de jogo. Obedece às regras R1, R2 e R7 de `design/business-model.md`: o cosmético nunca altera a leitura do jogo, conquista não se vende e o pet é só animação.
 
 ### Persistence: o que sobrevive à sessão
 
 **#28 Save local (inferido).** Só serializa o estado; cada sistema é dono da sua fatia. É o único sistema de persistência do MVP (tudo offline).
 
-**#29 Serviços online (Alpha).** Cloud save, validação de compras, relógio confiável para os tetos, leaderboard, remote config e, no pós-lançamento, validação do ranking e anti-cheat. O ADR de backend e de compras vem antes do GDD #26 (início ou fim do Vertical Slice, em aberto). Com o F2P, o núcleo (validação de compras, relógio, entitlements) deixa de ser cortável.
+**#29 Serviços online (Alpha).** Cloud save, validação de compras, relógio confiável para os tetos, leaderboard, remote config e, no pós-lançamento, validação do ranking e anti-cheat. O ADR de backend e de compras vem antes do GDD #26 (início ou fim do Vertical Slice, em aberto). Com o F2P, o núcleo (validação de compras, relógio, entitlements) deixa de ser cortável. A preferência de fornecedor do usuário é Railway e Supabase; o ADR de backend compara.
 
-**#37 Entitlements (inferido).** Interface de leitura das posses (capítulos e cosméticos comprados). O #29 a alimenta com um token assinado do servidor, e o resto do jogo só lê. O save local nunca guarda posses. Entra antes do GDD #20, porque Campanha consulta o #37 para saber o que está aberto.
+**#37 Entitlements (inferido, Alpha).** Interface de leitura das posses de cosméticos comprados. O #29 a alimenta com um token assinado do servidor, e o resto do jogo só lê. O save local nunca guarda posses. Como não há conteúdo de gameplay pago, a Campanha (#20) não a consulta e o #37 saiu do MVP.
 
 ### UI, Audio e Meta
 
@@ -99,7 +99,9 @@ O desenho tem um núcleo estreito e arriscado: a simulação determinística (#2
 
 **#35 Coop PvE de 4.** Rede, lobby e fila com companheiros. **#36 PvP em tempo real.** Último item do roadmap pós-lançamento (o TD recomendou o assíncrono como alternativa viável; a recomendação está registrada no conceito).
 
-**#39 Consentimento e privacidade (inferido, Alpha).** Consentimento, política de privacidade e formulários das lojas para o analytics, o backend e o cloud save. Bloqueia o soft launch. Não há SDK de anúncios no lançamento.
+**#39 Consentimento e privacidade (inferido, Alpha).** Consentimento, política de privacidade e formulários das lojas para o analytics, o backend e o cloud save. Bloqueia o soft launch. Cobre também o SDK do vídeo recompensado (só ao fim da partida, no PVE); não há banner nem intersticial.
+
+**#40 Auto-battle com IA (inferido, Full Vision).** A fase jogada sozinha pela IA de herói (#13), em conteúdo já vencido. Saiu do #15 por decisão do usuário. Nunca registra no Grimório, nunca conta vitória para o selo e nunca conta para o ranking.
 
 ---
 
@@ -123,12 +125,12 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 | 12 | Feedback de combate, VFX e HUD | Gameplay | MVP | Not Started | — | 6, 7, 10 |
 | 13 | IA de herói e companheiro (inferred) | Gameplay | Vertical Slice | Not Started | — | 2, 6, 10, 17 |
 | 14 | Dungeons e trindade | Gameplay | Vertical Slice | Not Started | — | 6, 7, 13, 17, 19, 21 |
-| 15 | Auto-battle e varredura | Gameplay | Alpha | Not Started | — | 2, 3, 13, 17, 20, 24, 26 |
+| 15 | Varredura | Gameplay | Alpha | Not Started | — | 17, 20, 24, 26 |
 | 16 | Grimório | Progression | MVP | Not Started | — | 3, 5, 8, 10, 19, 28 |
 | 17 | Selamento da build | Progression | MVP | Not Started | — | 8, 16, 19 |
 | 18 | Reforja | Progression | Alpha | Not Started | — | 8, 9, 17, 26 |
 | 19 | Herói: criação, nível e roster | Progression | MVP | Not Started | — | 10, 11 (no MVP: stub), 28 |
-| 20 | Campanha e capítulos | Progression | MVP | Not Started | — | 3, 7, 11 (no MVP: stub), 37 |
+| 20 | Campanha e capítulos | Progression | MVP | Not Started | — | 3, 7, 11 (no MVP: stub) |
 | 21 | Poder de Combate | Progression | Vertical Slice | Not Started | — | 19, 25 |
 | 22 | Ranking | Progression | Alpha | Not Started | — | 2, 14, 21, 28 |
 | 23 | Runas | Progression | Full Vision | Not Started | — | 19, 21, 25 |
@@ -145,9 +147,10 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 | 34 | Analytics e live ops | Meta | Alpha | Not Started | — | 5, 22, 26 |
 | 35 | Coop PvE de 4 | Meta | Full Vision | Not Started | — | 2, 13, 14, 22, 29 |
 | 36 | PvP em tempo real | Meta | Full Vision | Not Started | — | 6, 29, 35 |
-| 37 | Entitlements (inferred) | Persistence | MVP | Not Started | — | — |
-| 38 | Cosméticos e catálogo (inferred) | Economy | Alpha | Not Started | — | 19, 25, 27 |
+| 37 | Entitlements (inferred) | Persistence | Alpha | Not Started | — | — |
+| 38 | Cosméticos e catálogo (inferred) | Economy | Alpha | Not Started | — | 19, 25, 27, 37 |
 | 39 | Consentimento e privacidade (inferred) | Meta | Alpha | Not Started | — | 29, 34 |
+| 40 | Auto-battle com IA (inferred) | Gameplay | Full Vision | Not Started | — | 2, 3, 13, 15, 17, 20 |
 
 ---
 
@@ -156,7 +159,7 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 | Category | Description | Systems |
 |----------|-------------|---------|
 | **Core** | Foundation systems everything depends on | 1 a 5 |
-| **Gameplay** | The systems that make the game fun | 6 a 15 |
+| **Gameplay** | The systems that make the game fun | 6 a 15, 40 |
 | **Progression** | How the player grows over time | 16 a 23 |
 | **Economy** | Resource creation and consumption | 24 a 27, 38 |
 | **Persistence** | Save state and continuity | 28, 29, 37 |
@@ -179,12 +182,12 @@ A categoria Narrative do template foi removida: o conceito mantém a narrativa m
 
 | Tier | Sistemas | Qtd |
 |------|----------|-----|
-| MVP | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 17, 19, 20, 24, 25, 28, 30, 37 | 20 |
+| MVP | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16, 17, 19, 20, 24, 25, 28, 30 | 19 |
 | Vertical Slice | 11, 13, 14, 21, 26, 31, 32 | 7 |
-| Alpha | 15, 18, 22, 27, 29, 33, 34, 38, 39 | 9 |
-| Full Vision | 23, 35, 36 (e a gravação de replay do #2) | 3 |
+| Alpha | 15, 18, 22, 27, 29, 33, 34, 37, 38, 39 | 10 |
+| Full Vision | 23, 35, 36, 40 (e a gravação de replay do #2) | 4 |
 
-> **Creative Director Note** (CD-SYSTEMS: CONCERNS): todos os pilares têm dono e a core fantasy está inteira no MVP (combate, Grimório, Selamento, Forja e Campanha). O único sistema que não serve a nenhum pilar é o #15 Auto-battle, que já está na ordem de corte. Raças no Vertical Slice com o Orc como stub foi aceito (com uma raça só, o Pilar 5 não pode ser testado). Seis ajustes, que os GDDs correspondentes devem cumprir; o conjunto de 36 sistemas da data da revisão e os tiers não mudam (o índice tem 39 depois do modelo de negócio, ver a Business Model Note):
+> **Creative Director Note** (CD-SYSTEMS: CONCERNS): todos os pilares têm dono e a core fantasy está inteira no MVP (combate, Grimório, Selamento, Forja e Campanha). O único sistema que não serve a nenhum pilar é o #15 Auto-battle, que já está na ordem de corte. Raças no Vertical Slice com o Orc como stub foi aceito (com uma raça só, o Pilar 5 não pode ser testado). Seis ajustes, que os GDDs correspondentes devem cumprir; o conjunto de 36 sistemas da data da revisão e os tiers não mudam (o índice tem 40 depois do modelo de negócio e da divisão do #15, ver a Business Model Note):
 > - **(MVP) Fases de função** (escoltar, proteger) passam de #14 (Vertical Slice) para #20 Campanha, com tier explícito, porque são o que torna o Tank forjável sozinho. O GDD do #20 declara se o MVP tem pelo menos uma.
 > - **(MVP) A suprema ativa** tem a regra em #6 Combate ou #8 Skills, não em #4 Input (apresentação).
 > - **(MVP e Vertical Slice) Skill racial:** o stub do Orc reserva o slot da skill racial em #4, #8, #12 e #17 (como dado). O Vertical Slice ganha um critério de aceite do Pilar 5 que possa reprovar: duas raças distinguíveis sem olhar atributos.
@@ -202,7 +205,7 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 
 1. **#1 Dados e balanceamento**: todo valor de gameplay é dado; o remote config é injetado depois pelo #29, sem o #1 depender de rede.
 2. **#28 Save local**: só serializa; cada sistema é dono da sua fatia.
-3. **#37 Entitlements**: interface de leitura das posses (capítulos e cosméticos comprados); o #29 a alimenta e o resto do jogo só lê.
+3. **#37 Entitlements**: interface de leitura das posses de cosméticos comprados; o #29 a alimenta e o resto do jogo só lê (Alpha).
 
 ### Core Layer (depends on foundation)
 
@@ -220,7 +223,7 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 5. **#16 Grimório** — depends on: 3, 5, 8, 10, 19, 28
 6. **#17 Selamento da build** — depends on: 8, 16, 19
 7. **#9 Oferta de cartas** — depends on: 2, 3, 8, 10, 16 (só leitura)
-8. **#20 Campanha e capítulos** — depends on: 3, 7, 11 (stub no MVP), 37
+8. **#20 Campanha e capítulos** — depends on: 3, 7, 11 (stub no MVP)
 9. **#24 Inventário** — depends on: 7, 20
 10. **#25 Forja e sets** — depends on: 10, 19, 24
 11. **#11 Raças** — depends on: 6, 8
@@ -229,11 +232,12 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 14. **#14 Dungeons e trindade** — depends on: 6, 7, 13, 17, 19, 21
 15. **#26 Economia e tetos** — depends on: 1, 24, 25
 16. **#18 Reforja** — depends on: 8, 9, 17, 26
-17. **#15 Auto-battle e varredura** — depends on: 2, 3, 13, 17, 20, 24, 26
+17. **#15 Varredura** — depends on: 17, 20, 24, 26
 18. **#27 Monetização e loja** — depends on: 26
 19. **#22 Ranking** — depends on: 2, 14, 21, 28
 20. **#23 Runas** — depends on: 19, 21, 25
-21. **#38 Cosméticos e catálogo** — depends on: 19, 25, 27
+21. **#38 Cosméticos e catálogo** — depends on: 19, 25, 27, 37
+22. **#40 Auto-battle com IA** — depends on: 2, 3, 13, 15, 17, 20
 
 ### Presentation Layer (depends on features)
 
@@ -281,32 +285,33 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 | 11 | #17 Selamento da build | MVP | Feature | game-designer, ux-designer | L |
 | 12 | #9 Oferta de cartas | MVP | Feature | game-designer, systems-designer | M |
 | 13 | #7 Horda, waves e inimigos | MVP | Feature | game-designer, level-designer, ai-programmer | M |
-| 14 | #37 Entitlements | MVP | Foundation | technical-director | S |
-| 15 | #20 Campanha e capítulos | MVP | Feature | game-designer, level-designer | M |
-| 16 | #24 Inventário | MVP | Feature | economy-designer | S |
-| 17 | #25 Forja e sets | MVP | Feature | economy-designer, art-director | M |
-| 18 | #12 Feedback de combate, VFX e HUD | MVP | Presentation | technical-artist, ux-designer | L |
-| 19 | #4 Input e câmera de combate | MVP | Presentation | gameplay-programmer, ux-designer | S |
-| 20 | #30 UI de meta-jogo | MVP | Presentation | ux-designer | M |
-| 21 | #11 Raças | Vertical Slice | Feature | game-designer | S |
-| 22 | #13 IA de herói e companheiro | Vertical Slice | Feature | ai-programmer | L |
-| 23 | #21 Poder de Combate | Vertical Slice | Feature | systems-designer | M |
-| 24 | #14 Dungeons e trindade | Vertical Slice | Feature | game-designer, level-designer | L |
-| 25 | #26 Economia e tetos | Vertical Slice | Feature | economy-designer | L |
-| 26 | #31 Áudio | Vertical Slice | Presentation | audio-director | M |
-| 27 | #32 Onboarding | Vertical Slice | Polish | ux-designer | M |
-| 28 | #18 Reforja | Alpha | Feature | game-designer, economy-designer | M |
-| 29 | #15 Auto-battle e varredura | Alpha | Feature | game-designer | M |
-| 30 | #27 Monetização e loja | Alpha | Feature | economy-designer | M |
-| 31 | #22 Ranking | Alpha | Feature | systems-designer | M |
-| 32 | #29 Serviços online | Alpha | Polish | technical-director, security-engineer | L |
-| 33 | #33 Acessibilidade | Alpha | Polish | accessibility-specialist | S |
-| 34 | #34 Analytics e live ops | Alpha | Polish | analytics-engineer, live-ops-designer | M |
+| 14 | #20 Campanha e capítulos | MVP | Feature | game-designer, level-designer | M |
+| 15 | #24 Inventário | MVP | Feature | economy-designer | S |
+| 16 | #25 Forja e sets | MVP | Feature | economy-designer, art-director | M |
+| 17 | #12 Feedback de combate, VFX e HUD | MVP | Presentation | technical-artist, ux-designer | L |
+| 18 | #4 Input e câmera de combate | MVP | Presentation | gameplay-programmer, ux-designer | S |
+| 19 | #30 UI de meta-jogo | MVP | Presentation | ux-designer | M |
+| 20 | #11 Raças | Vertical Slice | Feature | game-designer | S |
+| 21 | #13 IA de herói e companheiro | Vertical Slice | Feature | ai-programmer | L |
+| 22 | #21 Poder de Combate | Vertical Slice | Feature | systems-designer | M |
+| 23 | #14 Dungeons e trindade | Vertical Slice | Feature | game-designer, level-designer | L |
+| 24 | #26 Economia e tetos | Vertical Slice | Feature | economy-designer | L |
+| 25 | #31 Áudio | Vertical Slice | Presentation | audio-director | M |
+| 26 | #32 Onboarding | Vertical Slice | Polish | ux-designer | M |
+| 27 | #18 Reforja | Alpha | Feature | game-designer, economy-designer | M |
+| 28 | #15 Varredura | Alpha | Feature | game-designer | S |
+| 29 | #27 Monetização e loja | Alpha | Feature | economy-designer | M |
+| 30 | #22 Ranking | Alpha | Feature | systems-designer | M |
+| 31 | #29 Serviços online | Alpha | Polish | technical-director, security-engineer | L |
+| 32 | #33 Acessibilidade | Alpha | Polish | accessibility-specialist | S |
+| 33 | #34 Analytics e live ops | Alpha | Polish | analytics-engineer, live-ops-designer | M |
+| 34 | #37 Entitlements | Alpha | Foundation | technical-director | S |
 | 35 | #38 Cosméticos e catálogo | Alpha | Feature | art-director, economy-designer | M |
 | 36 | #39 Consentimento e privacidade | Alpha | Polish | technical-director, security-engineer | M |
 | 37 | #23 Runas | Full Vision | Feature | systems-designer | L |
 | 38 | #35 Coop PvE de 4 | Full Vision | Polish | network-programmer | L |
 | 39 | #36 PvP em tempo real | Full Vision | Polish | network-programmer, security-engineer | L |
+| 40 | #40 Auto-battle com IA | Full Vision | Feature | ai-programmer | L |
 
 Esforço: S = 1 sessão, M = 2 a 3 sessões, L = 4 ou mais. O Grimório e o Selamento (ordem 10 e 11) são os sistemas de maior risco de design e entram assim que Funções, Skills e Herói existem. Os dois são revisados juntos.
 
@@ -336,7 +341,7 @@ Dois acoplamentos de dependência que **não** são ciclos e devem ficar assim: 
 | #10 Funções (Tank solo) | Design | O Tank pode não ser divertido sozinho; o Pilar 3 só valida a partir do Vertical Slice. | Critério de aceite do MVP: Tank com no máximo [2] mortes até abrir o selo; uso solo em toda skill de função. |
 | #25 Forja e sets | Scope | Cerca de 400 encaixes de peça sem a regra de raridade por material; critério de pipeline de arte do MVP. | Raridade como variante de material ou shader; horas reais por peça medidas no MVP. |
 | #13 e #14 Healer + IA de companheiro | Scope / Design | O Producer aponta como o trecho mais arriscado do Vertical Slice. | IA como sistema próprio; companheiro NPC com poder limitado (knob). |
-| #26 e #27 Economia e Monetização | Design / Scope | O F2P devolve ao Alpha o escopo de #27, #29 e #34 e exige receita sem vender poder; custo de aquisição pago inviabiliza a meta. | Modelo decidido em `design/business-model.md` (cosméticos, DLC de capítulos, sem anúncios no lançamento); catálogo filtrado pelo teste "este item muda o resultado de alguma run ou a recompensa esperada por dia ou por temporada?"; critério de saída escrito antes do soft launch. |
+| #26 e #27 Economia e Monetização | Design / Scope | O F2P devolve ao Alpha o escopo de #27, #29 e #34 e exige receita sem vender poder; custo de aquisição pago inviabiliza a meta. | Modelo decidido em `design/business-model.md` (só cosméticos, sem conteúdo de gameplay pago, vídeo recompensado só da moeda sem poder); catálogo filtrado pelo teste "este item muda o resultado de alguma run ou a recompensa esperada por dia ou por temporada?"; critério de saída escrito antes do soft launch. |
 | #29, #35 e #36 Serviços online, Coop e PvP | Technical | Rede móvel, servidor autoritativo e anti-cheat; nenhum backend está coberto pela referência do engine. | Pós-lançamento; ADR de backend no fim do Vertical Slice. |
 
 ---
@@ -349,10 +354,10 @@ Dois acoplamentos de dependência que **não** são ciclos e devem ficar assim: 
 > - **Aplicado:** Raças (#11) e Economia (#26) passam ao Vertical Slice; a gravação de replay sai do MVP (Full Vision).
 > - **Não aplicado:** fundir Campanha (#20) em Fluxo de fase (#3) e Inventário (#24) em Forja (#25) (mistura conteúdo com a lógica pura do TD e põe a carteira na Forja). O Producer sugeriu; o usuário não marcou.
 > - **Plano pré-D0 (recomendação, não está em `project.yaml`):** GDD completo só para #2, #6, #7, #8, #9, #16 e #17; spec leve para #19, #28 e #30; o resto é escrito na hora em que for necessário; timebox de 8 semanas para o Systems Design. Para valer, usa `workflow_overrides.system_overrides` via `/settings`.
-> - **Ordem de corte se o orçamento apertar** (revista para o F2P, ver `design/business-model.md`): (1) anúncios (já cortados no lançamento); (2) passe de temporada (já adiado para a 1ª temporada depois do lançamento); (3) #22 Ranking; (4) o auto-battle do #15, mantendo a varredura; (5) capítulo 2 como 1º DLC; (6) só a reforja grátis por nerf do #18 (o Livro e a run de reforja ficam; o creative-director negou o corte inteiro). **Nunca cortar:** o baseline de #33, o #28, o núcleo do #29 e o consentimento (#39). A antiga opção "decidir premium" deixou de existir com a decisão pelo F2P.
+> - **Ordem de corte se o orçamento apertar** (revista para o F2P, ver `design/business-model.md`): (1) o vídeo recompensado e o SDK de anúncios; (2) o passe de temporada (já adiado); (3) #22 Ranking; (4) reduzir a cadência de sets cosméticos por temporada; (5) só a reforja grátis por nerf do #18 (o Livro e a run de reforja ficam; o creative-director negou o corte inteiro). O auto-battle (#40) já está no Full Vision. **Nunca cortar:** o baseline de #33, o #28, o núcleo do #29 e o consentimento (#39). As antigas opções "decidir premium" e "capítulo 2 como DLC" deixaram de existir: todo o conteúdo de gameplay é grátis.
 > - **Também registrado:** o baseline de acessibilidade é requisito do GDD do #12 já no Vertical Slice; o ADR de backend e de compras (#29) vem antes do GDD #26.
 
-> **Business Model Note** (2026-11-03, modelo F2P decidido; detalhes e números pendentes em `design/business-model.md`): F2P com cosméticos de loja e capítulos como DLC; passe de temporada só de cosméticos na 1ª temporada depois do lançamento; **sem anúncios no lançamento**; soft launch só no Android; cosméticos de conquista como família própria. Revisão dos 4 diretores: economy-designer e TD viáveis com condições, CD CONCERNS (R1 a R3), Producer otimista. Três sistemas novos: #37 Entitlements (MVP, antes do GDD #20), #38 Cosméticos e catálogo (Alpha) e #39 Consentimento e privacidade (Alpha, bloqueia o soft launch). O #29 perde o corte do núcleo e o #34 deixa de poder ser reduzido ao log. **Proposta do Producer ainda não aceita:** soft launch no mês 19 a 20 e lançamento global no mês 23 a 24 (o conceito congelado diz 16, e o Producer pediu tratar o mês 20 como esperado). Pontos em aberto: quais capítulos são pagos, dividir o #15 (varredura no Alpha, auto-battle no Full Vision), moeda sem poder para cosméticos ganhos jogando.
+> **Business Model Note** (2026-11-03, modelo F2P validado; detalhes em `design/business-model.md`): F2P **sem conteúdo de gameplay pago** (todos os capítulos, dungeons e PvP são grátis). Receita: cosméticos de loja (skins, transmogs temáticos e pets só de animação) e um vídeo recompensado ao fim da partida (PVE) que dobra só a moeda de jogo sem poder, nunca material, XP, skill nem reroll. Passe de temporada só de cosméticos na 1ª temporada depois do lançamento; soft launch só no Android. Revisão dos 4 diretores (feita sobre uma versão com capítulos como DLC e sem vídeo): economy-designer e TD viáveis com condições, CD CONCERNS (regras R1 a R7), Producer otimista. Três sistemas novos: #37 Entitlements (Alpha), #38 Cosméticos e catálogo (Alpha) e #39 Consentimento e privacidade (Alpha, bloqueia o soft launch); o #15 foi dividido em Varredura (Alpha) e #40 Auto-battle com IA (Full Vision). O #29 perde o corte do núcleo e o #34 deixa de poder ser reduzido ao log. **Cronograma aprovado pelo usuário:** soft launch no mês 19 a 20 e lançamento global no mês 23 a 24 (o conceito congelado diz 16), com 80 h por semana; o Producer ainda não o reavaliou com o SDK de vídeo. Em aberto: preço por SKU, orçamento de aquisição e gatilho de saída; taxas da moeda de jogo (GDD #26); distinção visual entre cosméticos de conquista, de loja e de moeda (CD).
 
 ---
 
@@ -360,11 +365,11 @@ Dois acoplamentos de dependência que **não** são ciclos e devem ficar assim: 
 
 | Metric | Count |
 |--------|-------|
-| Total systems identified | 39 |
+| Total systems identified | 40 |
 | Design docs started | 0 |
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
-| MVP systems designed | 0/20 |
+| MVP systems designed | 0/19 |
 | Vertical Slice systems designed | 0/7 |
 
 ---
@@ -372,7 +377,7 @@ Dois acoplamentos de dependência que **não** são ciclos e devem ficar assim: 
 ## Next Steps
 
 - [x] Gate de direção criativa do índice (CD-SYSTEMS): CONCERNS, registrado na `Creative Director Note` abaixo da tabela de Priority Tiers
-- [x] Etapa de formalização do modelo de negócio: decisões registradas em `design/business-model.md` (F2P); **faltam os números do usuário (seção 12) e os pontos em aberto (seção 11)**, antes do GDD #26 e do #27
+- [x] Etapa de formalização do modelo de negócio: decisões validadas em `design/business-model.md` (F2P, só cosméticos); **faltam preço por SKU, orçamento de aquisição e gatilho de saída (seção 12)** e a reavaliação do Producer com o SDK de vídeo, antes do GDD #26 e do #27
 - [ ] Escrever o doc de aceite do MVP (`docs/acceptance/mvp.md`) com commit e revisão do qa-lead antes de D0
 - [ ] Decidir a ordem do spike de performance e da semana 0 (o Producer quer em paralelo ao Systems Design; o conceito os põe depois de D0)
 - [ ] Rodar `/art-bible` antes dos GDDs #12, #25 e #30
