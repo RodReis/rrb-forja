@@ -111,14 +111,14 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 
 | # | System Name | Category | Priority | Status | Design Doc | Depends On |
 |---|-------------|----------|----------|--------|------------|------------|
-| 1 | Dados e balanceamento | Core | MVP | Not Started | — | — |
+| 1 | Dados e balanceamento | Core | MVP | Designed | [dados-e-balanceamento.md](dados-e-balanceamento.md) | — |
 | 2 | Simulação de combate determinística | Core | MVP | Not Started | — | 1 |
-| 3 | Fluxo de fase (inferred) | Core | MVP | Not Started | — | 2 |
+| 3 | Fluxo de fase (inferred) | Core | MVP | Not Started | — | 1, 2, 28 |
 | 4 | Input e câmera de combate | Core | MVP | Not Started | — | 3 |
-| 5 | Log de eventos e instrumentação de aceite | Core | MVP | Not Started | — | 2, 28 |
+| 5 | Log de eventos e instrumentação de aceite | Core | MVP | Not Started | — | 1, 2, 28 |
 | 6 | Combate e dano | Gameplay | MVP | Not Started | — | 1, 2 |
 | 7 | Horda, waves e inimigos | Gameplay | MVP | Not Started | — | 1, 2, 6 |
-| 8 | Skills e evoluções | Gameplay | MVP | Not Started | — | 6, 10 |
+| 8 | Skills e evoluções | Gameplay | MVP | Not Started | — | 1, 6, 10 |
 | 9 | Oferta de cartas no level-up | Gameplay | MVP | Not Started | — | 2, 3, 8, 10, 16 (leitura) |
 | 10 | Funções | Gameplay | MVP | Not Started | — | 1, 6 |
 | 11 | Raças | Gameplay | Vertical Slice | Not Started | — | 6, 8 (no MVP: stub do Orc em 1) |
@@ -126,9 +126,9 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 | 13 | IA de herói e companheiro (inferred) | Gameplay | Vertical Slice | Not Started | — | 2, 6, 10, 17 |
 | 14 | Dungeons e trindade | Gameplay | Vertical Slice | Not Started | — | 6, 7, 13, 17, 19, 21 |
 | 15 | Varredura | Gameplay | Alpha | Not Started | — | 17, 20, 24, 26 |
-| 16 | Grimório | Progression | MVP | Not Started | — | 3, 5, 8, 10, 19, 28 |
-| 17 | Selamento da build | Progression | MVP | Not Started | — | 8, 16, 19 |
-| 18 | Reforja | Progression | Alpha | Not Started | — | 8, 9, 17, 26 |
+| 16 | Grimório | Progression | MVP | Not Started | — | 1, 3, 5, 8, 10, 19, 28 |
+| 17 | Selamento da build | Progression | MVP | Not Started | — | 1, 8, 16, 19, 28 |
+| 18 | Reforja | Progression | Alpha | Not Started | — | 1, 8, 9, 17, 26 |
 | 19 | Herói: criação, nível e roster | Progression | MVP | Not Started | — | 10, 11 (no MVP: stub), 28 |
 | 20 | Campanha e capítulos | Progression | MVP | Not Started | — | 3, 7, 11 (no MVP: stub) |
 | 21 | Poder de Combate | Progression | Vertical Slice | Not Started | — | 19, 25 |
@@ -136,10 +136,10 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 | 23 | Runas | Progression | Full Vision | Not Started | — | 19, 21, 25 |
 | 24 | Inventário: materiais, moedas e loot | Economy | MVP | Not Started | — | 7, 20 |
 | 25 | Forja e sets | Economy | MVP | Not Started | — | 10, 19, 24 |
-| 26 | Economia e tetos | Economy | Vertical Slice | Not Started | — | 1, 24, 25 (audita 18 e 27 quando existirem) |
+| 26 | Economia e tetos | Economy | Vertical Slice | Not Started | — | 1, 24, 25, 28 (audita 18 e 27 quando existirem) |
 | 27 | Monetização e loja | Economy | Alpha | Not Started | — | 26 |
-| 28 | Save local (inferred) | Persistence | MVP | Not Started | — | — |
-| 29 | Serviços online | Persistence | Alpha | Not Started | — | 2, 22, 27, 28, 37 |
+| 28 | Save local (inferred) | Persistence | MVP | Designed | [save-local.md](save-local.md) | 1 |
+| 29 | Serviços online | Persistence | Alpha | Not Started | — | 1, 2, 22, 27, 28, 37 |
 | 30 | UI de meta-jogo | UI | MVP | Not Started | — | 16, 17, 19, 24, 25 |
 | 31 | Áudio | Audio | Vertical Slice | Not Started | — | 6, 10, 11, 17 |
 | 32 | Onboarding | Meta | Vertical Slice | Not Started | — | 16, 20, 30 |
@@ -366,10 +366,10 @@ Dois acoplamentos de dependência que **não** são ciclos e devem ficar assim: 
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 40 |
-| Design docs started | 0 |
+| Design docs started | 2 |
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
-| MVP systems designed | 0/19 |
+| MVP systems designed | 2/19 |
 | Vertical Slice systems designed | 0/7 |
 
 ---
@@ -381,7 +381,7 @@ Dois acoplamentos de dependência que **não** são ciclos e devem ficar assim: 
 - [ ] Escrever o doc de aceite do MVP (`docs/acceptance/mvp.md`) com commit e revisão do qa-lead antes de D0
 - [ ] Decidir a ordem do spike de performance e da semana 0 (o Producer quer em paralelo ao Systems Design; o conceito os põe depois de D0)
 - [ ] Rodar `/art-bible` antes dos GDDs #12, #25 e #30
-- [ ] ADR da Simulação (tipo numérico e interface) antes dos GDDs #6, #7 e #8
+- [x] ADR da Simulação (tipo numérico e interface) antes dos GDDs #6, #7 e #8: `docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md` (Proposed, 2026-11-03)
 - [ ] Projetar os sistemas do MVP na ordem acima (`/design-system [system-name]`), começando por #1; o Grimório (#16) e o Selamento (#17) são revisados juntos
 - [ ] Rodar `/design-review` em cada GDD concluído (máximo de 2 passadas por GDD, como regra de saída)
 - [ ] Rodar `/gate-check technical-setup` quando os GDDs do MVP estiverem concluídos

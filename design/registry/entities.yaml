@@ -54,7 +54,7 @@
 #   in any other shape is reported as unsupported layout, with its number.
 
 version: 1
-last_updated: ""
+last_updated: "2026-11-03"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -123,7 +123,123 @@ items: []
 #   output_range[min, max], added
 # Optional: expression (the actual formula), notes
 
-formulas: []
+formulas:
+  - name: duracao_ticks
+    status: active
+    source: design/gdd/dados-e-balanceamento.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    variables:
+      - s
+      - ticks_per_second
+    output_range: [1, 2147483647]
+    expression: "floor(s * 30 + 0.5) in decimal; reject when < 1"
+    notes: "Midpoint rounds up (AwayFromZero). Below 1/60 s gives 0 and the dataset is rejected, never clamped. Upper bound is the knob's own safe range."
+    added: 2026-11-03
+    revised: ""
+  - name: taxa_por_tick
+    status: active
+    source: design/gdd/dados-e-balanceamento.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    variables:
+      - r
+      - ticks_per_second
+    output_range: [-3.4e38, 3.4e38]
+    expression: "(float)(r / 30) computed in decimal, one rounding"
+    notes: "Bounded by the knob's safe range divided by 30. Summing 30 ticks need not equal r exactly (100/s gives about 99.99999)."
+    added: 2026-11-03
+    revised: ""
+  - name: capacidade_ok
+    status: active
+    source: design/gdd/dados-e-balanceamento.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    variables:
+      - pico
+      - capacity_margin_pct
+      - cap
+      - capacity_ceiling
+    output_range: [0, 1]
+    expression: "pico * (100 + margem_pct) <= cap * 100 AND cap <= teto (64-bit integer math)"
+    notes: "Boolean (0 = rejected, 1 = ok). Peak is declared by the owner GDD (#7 for entities)."
+    added: 2026-11-03
+    revised: ""
+  - name: grimorio_setup_ok
+    status: active
+    source: design/gdd/dados-e-balanceamento.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+      - design/gdd/game-concept.md
+    variables:
+      - grimorio_capacity_c
+      - seal_size_s
+      - seal_function_slots_sf
+      - pool_funcao_pf
+      - pool_compartilhado_pc
+    output_range: [0, 1]
+    expression: "(S + 1 <= C <= P - S) AND (P_f >= S_f), P = P_f + P_c, per role"
+    notes: "Boolean. Reading of the concept's 5 <= C <= |pool| - 4 as S+1 and S is an interpretation pending GDD #17 (OQ-1). Placeholders and deprecated skills are not counted."
+    added: 2026-11-03
+    revised: ""
+  - name: k_min_ok
+    status: active
+    source: design/gdd/dados-e-balanceamento.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    variables:
+      - k_min
+      - seal_size_s
+      - n_fases
+      - replay_limit
+    output_range: [0, 1]
+    expression: "S <= K_min <= N_fases + R_max"
+    notes: "Boolean, static part only. The dynamic invariant max(0, 4 - g, 2 - f) is a headless test of #16 and #17, not data validation."
+    added: 2026-11-03
+    revised: ""
+  - name: knob_ok
+    status: active
+    source: design/gdd/dados-e-balanceamento.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    variables:
+      - min
+      - max
+      - padrao
+      - pior
+      - sentido
+    output_range: [0, 1]
+    expression: "min <= padrao <= max AND (acceptance knob -> padrao on the good side of pior)"
+    notes: "Boolean. Acceptance knobs without sentido (menor_melhor or maior_melhor) are rejected."
+    added: 2026-11-03
+    revised: ""
+  - name: effective_utc
+    status: active
+    source: design/gdd/save-local.md
+    referenced_by:
+      - design/gdd/save-local.md
+      - design/business-model.md
+    variables:
+      - max_seen_utc
+      - now_utc
+    output_range: [0, 9223372036854775807]
+    expression: "max_seen_utc = max(max_seen_utc_saved, now_utc); effective_utc = max_seen_utc"
+    notes: "Milliseconds UTC, never decreases. Read by #26 Economy for caps and offline accrual (K periods knob in #1)."
+    added: 2026-11-03
+    revised: ""
+  - name: save_sequence
+    status: active
+    source: design/gdd/save-local.md
+    referenced_by:
+      - design/gdd/save-local.md
+    variables:
+      - save_sequence_saved
+    output_range: [1, 9223372036854775807]
+    expression: "save_sequence_saved + 1, only when a commit completes and is verified"
+    notes: "A failed write consumes no number. Used by #29 (Alpha) to detect a save that regressed."
+    added: 2026-11-03
+    revised: ""
 
 # Example:
 #
@@ -156,7 +272,61 @@ formulas: []
 #
 # Required fields: name, status, source, referenced_by, value, unit, added
 
-constants: []
+constants:
+  - name: ticks_per_second
+    status: active
+    source: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    value: 30
+    unit: ticks/s
+    added: 2026-11-03
+    revised: ""
+  - name: grimorio_capacity_c
+    status: active
+    source: design/gdd/game-concept.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    value: 5
+    unit: skills
+    added: 2026-11-03
+    revised: ""
+  - name: k_min
+    status: active
+    source: design/gdd/game-concept.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    value: 7
+    unit: phase-boss wins
+    added: 2026-11-03
+    revised: ""
+  - name: seal_size_s
+    status: active
+    source: design/gdd/game-concept.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    value: 4
+    unit: skills
+    added: 2026-11-03
+    revised: ""
+  - name: seal_function_slots_sf
+    status: active
+    source: design/gdd/game-concept.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    value: 2
+    unit: skills
+    added: 2026-11-03
+    revised: ""
+  - name: capacity_margin_pct
+    status: active
+    source: design/gdd/dados-e-balanceamento.md
+    referenced_by:
+      - design/gdd/dados-e-balanceamento.md
+    value: 25
+    unit: percent
+    added: 2026-11-03
+    revised: ""
 
 # Example:
 #

@@ -40,7 +40,7 @@
 #   unsupported layout, with its number.
 
 version: 1
-last_updated: ""
+last_updated: "2026-11-03"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -53,7 +53,17 @@ last_updated: ""
 # interface: how other systems access this state (read-only property, method call,
 #   signal, shared resource, etc.) — this is the contract other ADRs depend on.
 
-state_ownership: []
+state_ownership:
+  - state: entity_table
+    status: active
+    owner_system: sim-world
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    interface: "SimWorld (Forja.Simulation): id, posicao atual e do tick anterior, faccao, HP e vivo; ids monotonicos por fase, nunca reutilizados; colunas extras so por ADR de #6 e #7"
+    write_access: isimsystem-within-tick-only
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+    revised: ""
 
 # Example:
 #
@@ -81,7 +91,32 @@ state_ownership: []
 #
 # pattern options: signal | direct_call | event_bus | shared_resource | rpc | none
 
-interfaces: []
+interfaces:
+  - contract: sim_commands
+    status: active
+    pattern: direct_call
+    producer: presentation-or-policy
+    consumers:
+      - simulation
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    signal_signature: "Simulation.Tick(ReadOnlySpan<Command> commands)"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+    revised: ""
+  - contract: sim_events
+    status: active
+    pattern: shared_resource
+    producer: simulation
+    consumers:
+      - presentation
+      - event-log
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    signal_signature: "Simulation.Events (ReadOnlySpan<SimEvent>, output only, valid until next Tick, drained after every Tick; Simulation.DroppedEvents never silent)"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+    revised: ""
 
 # Example:
 #
@@ -141,7 +176,37 @@ performance_budgets: []
 # Register an API decision when the choice is non-obvious and other ADRs might
 # make a different choice for the same purpose without knowing this was decided.
 
-api_decisions: []
+api_decisions:
+  - purpose: sim_random
+    status: active
+    api: "Pcg32 (Forja.Simulation), one instance per RngStream, seed SplitMix64(masterSeed ^ streamId)"
+    not: "UnityEngine.Random, System.Random"
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    reason: "Seeded independent streams (Spawn, Offer, Loot) reproducible in the same build; Unity and System RNG are not controllable or portable"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+    revised: ""
+  - purpose: sim_numeric_type
+    status: active
+    api: "float (System.Single) with all non-basic math through SimMath; no transcendental functions in simulation state"
+    not: "double, decimal, Unity.Mathematics, UnityEngine.Mathf, Vector3"
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    reason: "Same-build determinism at the lowest formula cost for the MVP; fixed point is the registered replacement if #22 or #40 need cross-device verification"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+    revised: ""
+  - purpose: sim_time
+    status: active
+    api: "SimClock.TicksPerSecond = 30, simulation works in integer ticks; data authored in seconds, converted at load by round-to-nearest with a 1 tick minimum"
+    not: "Time.deltaTime, Time.time, wall clock"
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    reason: "Result depends only on seed and per-tick commands, never on frame timing"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+    revised: ""
 
 # Example:
 #
@@ -167,7 +232,31 @@ api_decisions: []
 # Register a pattern when an ADR explicitly bans it AND other ADRs might
 # unknowingly use it (i.e., it's a tempting but wrong approach for this project).
 
-forbidden_patterns: []
+forbidden_patterns:
+  - pattern: unityengine_in_simulation
+    status: active
+    description: "Code in Forja.Simulation and in any system called from ISimSystem.Step must not reference UnityEngine, MonoBehaviour, ScriptableObject, Time, Mathf, Vector3 or Unity.Mathematics."
+    why: "Keeps the simulation headless and testable in EditMode with the same code as the game, and keeps determinism out of engine behavior that docs/engine-reference does not cover."
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+  - pattern: event_as_inter_system_channel
+    status: active
+    description: "Simulation events are output only. A system must not read events emitted in the same tick as a channel to another system; internal communication goes through SimWorld."
+    why: "Subscription or emission order must never become a rule; the fixed system order and shared state keep ticks reproducible."
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+  - pattern: mutable_static_in_simulation
+    status: active
+    description: "Forja.Simulation must not hold mutable static state; stream tables, SimMath and lookup tables are immutable."
+    why: "With Enter Play Mode Options and no domain reload, static state survives between runs and breaks reproducibility."
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
+  - pattern: unordered_iteration_for_effect_order
+    status: active
+    description: "Effect order inside a tick must not come from iterating Dictionary or HashSet; iterate by ascending index."
+    why: "Unordered collections can yield a different order between runs, which changes the result for the same seed and commands."
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-03
 
 # Example:
 #
