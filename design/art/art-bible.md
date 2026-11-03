@@ -3,7 +3,7 @@
 > **Status**: Draft
 > **Owned By**: art-director
 > **Last Updated**: 2026-11-03
-> **Art Director Sign-Off (AD-ART-BIBLE)**: [Not yet reviewed]
+> **Art Director Sign-Off (AD-ART-BIBLE)**: REVISED 2026-11-03 — 1ª passada CONCERNS (contradições de tamanho e de faixas de V, testes que não mediam a regra, VFX aliado só com negações); revisada; 2ª passada CONCERNS (oito de nove pontos fecharam; restaram a placa de dano sofrido, o contraste do telegraph, o V do chão contra o LUT do chefe, a paleta de corpo de elite e chefe e texto defasado); esses cinco itens foram corrigidos e **não houve 3ª passada** (decisão do usuário). Pendências aceitas, que o spike e a Pré-Produção fecham: os `A VERIFICAR`, os orçamentos provisórios da Seção 8, a ordem decal/LUT do telegraph, a folga de S sob luz quente, a licença comercial do Tripo (8.15) e as entregas listadas em 8.15.
 
 `/art-bible` writes these nine sections in this order and replaces each
 section's `[To be designed]` line as that section is approved. A section still
@@ -57,7 +57,7 @@ Cada estado tem uma **luz própria** (hora, temperatura, contraste) e uma **ener
 
 ### 2.2 Elite e chefe com telegraph
 - **Emoção:** pavor lúcido, um erro custa caro.
-- **Luz:** o ambiente cai cerca de 1 stop e esfria (LUT, ~7500 K). O telegraph quente é o único ponto saturado da tela.
+- **Luz:** o ambiente cai cerca de 1 stop e esfria (LUT, ~7500 K). Os V de 4.2e leem-se pré-LUT; depois do LUT valem os intervalos de L2 (4.2e). O telegraph quente é o único ponto saturado da tela.
 - **Adjetivos:** contido, ameaçador, nítido, ritmado. **Energia:** tensão alta e movimento curto.
 - **O que carrega o clima:** um telegraph isolado num ambiente frio.
 - **Entrega mobile:** troca de LUT mais um decal de chão, sem partículas novas.
@@ -120,7 +120,7 @@ A silhueta pertence à função e é lida em escala de cinza em miniatura (cerca
 A raça só altera proporção de cabeça e ombro, postura e animação (Seção 1, princípio B). Heróis têm ombros e arma de 10 a 15% maiores que o natural, para continuar legíveis na câmera alta. Cada função tem **um** traço distintivo, e nenhum cosmético o apaga (R1).
 
 ### 3.2 Geometria do ambiente
-Planos grandes e horizontais com pouca textura, ruínas de blocos retos e verticais quebrados por diagonais de desabamento. O chão é plano e legível, e o detalhe fica nos heróis e nas ameaças. Elites e chefes são grandes e assimétricos, com uma "parte que ataca" identificável. A horda é bloco simples, sem acessório solto. A **parte que ataca** de elites e chefes é o **"osso frio"**: H 200° a 230°, S 8 a 15%, V 80 a 92%. Fica fora da faixa do telegraph por construção, tem mais de 50 pontos de V acima da horda e ≥ 3:1 de luminância contra o corpo, ocupa ≤ 15% da silhueta e só a parte que ataca. Distingue-se da runa (S 30%) e do aço do selo (S 43%) pela saturação.
+Planos grandes e horizontais com pouca textura, ruínas de blocos retos e verticais quebrados por diagonais de desabamento. O chão é plano e legível, e o detalhe fica nos heróis e nas ameaças. Elites e chefes são grandes e assimétricos, com uma "parte que ataca" identificável. A horda é bloco simples, sem acessório solto. A **parte que ataca** de elites e chefes é o **"osso frio"**: H 200° a 230°, S 8 a 15%, V 80 a 92%. Fica fora da faixa do telegraph por construção, tem mais de 50 pontos de V acima da horda e ≥ 3:1 de luminância contra o corpo, ocupa ≤ 15% da silhueta e só a parte que ataca. Distingue-se da runa (S 30%) e do aço do selo (S 43%) pela saturação. O **corpo** de elite e chefe segue a 4.2e (frio e dessaturado).
 
 ### 3.3 Gramática da UI
 A UI é uma **linguagem própria que ecoa a forja**: placas de metal com cantos chanfrados e rebites. No HUD de combate é geometria mínima e plana. Três vocabulários de forma são **reservados**:
@@ -129,7 +129,7 @@ A UI é uma **linguagem própria que ecoa a forja**: placas de metal com cantos 
 - **Glifo angular gravado:** só da assinatura de conquista (marca do selo e insígnias de clear e de ranking).
 
 ### 3.4 Herói versus apoio
-O herói ocupa a camada alta, com a maior saturação do corpo e contorno leve. Aliados e companheiros usam formas menores e efeitos atenuados. A hierarquia de leitura é **telegraph > herói > aliados > horda > cenário**.
+O herói ocupa a camada alta, com a maior saturação do corpo e contorno leve. Aliados e companheiros usam formas menores e efeitos atenuados. A hierarquia de leitura é **telegraph > herói > elite e chefe > aliados > horda > cenário**. O herói vence elite e chefe pela saturação, não pelo valor (4.2e).
 
 ### 3.5 Cinco molduras de raridade
 Cada moldura vale para o ícone, a placa do inventário e o decal de chão do drop. A forma não vive na malha do equipamento, porque a raridade é variante de material ou shader (conceito L278). A leitura é pela contagem de chanfros e pontas, nunca só pela cor:
@@ -143,7 +143,13 @@ Cada moldura vale para o ícone, a placa do inventário e o decal de chão do dr
 | Dourado | contorno duplo (moldura dentro de moldura), coroa de 3 pontas e rebites nos cantos |
 
 ### 3.6 Forma do telegraph
-É um decal de chão com borda externa **serrilhada** (dentes triangulares para dentro) e **hachura diagonal** no preenchimento. Uma frente de preenchimento cresce da origem até a borda para marcar o tempo. Nenhuma skill aliada, VFX, cosmético ou elemento de UI pode ter serrilha ou hachura. Efeitos aliados são curvas lisas e translúcidas. **Anel (decisão do usuário em 2026-11-03):** o único anel **fechado** (360°, traço ≤ 4% do diâmetro, sempre menta) é o da cura. O efeito aliado em anel é um **arco aberto** (≤ 270°, abertura ≥ 90°) ou um **disco difuso sem contorno** (feather ≥ 40% do raio); isso se mede por contorno fechado e perfil radial. O Mago perde o anel de nova completo. O círculo de cura do Healer é liso e fino, então se distingue do telegraph circular pela forma, não pela cor.
+É um decal de chão com borda **serrilhada** e **hachura diagonal de dois tons** no preenchimento (decisão do usuário em 2026-11-03: a cor sozinha dá só ≈ 1,2:1 contra o chão, ver 4.2c). Valores em px de render:
+- **Preenchimento:** `#FF4A1C` (mantido), alfa 0,70. Composto sobre a areia dá `#DC5932` (H 14°, S 77%, V 86%), dentro da faixa.
+- **Hachura:** 45°, faixas de 4 px, passo de 16 px, na sequência escura 4, preenchimento 4, clara 4, preenchimento 4. Tintas opacas: escura `#1C1612` (V 11%) e clara `#FFC2A8` (H 18°, S 34%, V 100%).
+- **Serrilha:** dentes triangulares para dentro, passo 16, profundidade 8. Contorno em 2 anéis de 3 px que seguem os dentes: externo escuro, interno claro.
+- **Medição:** o preenchimento (≥ 50% da área) fica na faixa; as tintas (≈ 25% cada) ficam fora dela por V e por S e só se medem como telegraph pela máscara de camada.
+
+ Uma frente de preenchimento cresce da origem até a borda para marcar o tempo. Nenhuma skill aliada, VFX, cosmético ou elemento de UI pode ter serrilha ou hachura. Efeitos aliados são curvas lisas e translúcidas. **Anel (decisão do usuário em 2026-11-03):** o único anel **fechado** (360°, traço ≤ 4% do diâmetro, sempre menta) é o da cura. O efeito aliado em anel é um **arco aberto** (≤ 270°, abertura ≥ 90°) ou um **disco difuso sem contorno** (feather ≥ 40% do raio); isso se mede por contorno fechado e perfil radial. O Mago perde o anel de nova completo. O círculo de cura do Healer é liso e fino, então se distingue do telegraph circular pela forma, não pela cor.
 
 **Gramática de forma do VFX aliado (medível):** (1) razão perímetro/envoltória convexa do contorno do sprite ≤ 1,15 (sem dentes); (2) nenhum atlas com listras paralelas periódicas (auditoria por nome de arquivo); (3) alfa máxima ≤ 0,85, e ≥ 40% da área do cartão com alfa ≤ 0,6.
 
@@ -157,6 +163,7 @@ Cada moldura vale para o ícone, a placa do inventário e o decal de chão do dr
 | Pedra-sombra | `#2B3340` | horda (H 215°, S 33%, V 25%) |
 | Poeira de luz | `#F2DDB0` | luz dura do deserto |
 | **Perigo** | `#FF4A1C` | exclusivo do telegraph (H 12°, S 89%, V 100%) |
+| Tintas do telegraph | `#1C1612` (escura), `#FFC2A8` (clara) | só o decal do telegraph, por camada; o preenchimento segue `#FF4A1C` |
 | Cura | `#5ED8A0` | menta (H 152°); sempre acompanhada de forma circular |
 | Selo | `#FFF1D6` (branco-quente), `#5E7FA6` (aço), `#A9CFF2` (runa) | só conquista: marca do selo, insígnias de clear e de ranking |
 | Dourado | `#D8C54A` | raridade máxima (H 52°, S 66%, V 85%) |
@@ -169,16 +176,22 @@ O herói não tem swatch fixo. A regra é a do bloco (e): a saturação vem da a
 
 **(a) Faixa proibida do telegraph (testável).**
 - **Condição:** matiz **350° a 38°** (HSV, com wrap), saturação **≥ 55%** e valor **≥ 55%**.
-- **Medição:** HSV padrão (V = max, S = (max−min)/max) sobre o RGB sRGB de 8 bits do PNG capturado, pós-tonemap, no buffer de render, sem UI (px de render, ver a Seção 8). A UI é medida à parte, no canvas de 1080. Falha: bloco 4×4 com mediana na faixa. **Máscaras:** o telegraph fica em camada própria e sai da varredura; ele é medido à parte e tem de estar **dentro** da faixa em L1 a L3. **Conjunto mínimo de capturas:** L1 a L6 (tabela de 4.2e) × a grade de raridades r1 a r5 (item, decal de drop, UI), mais 1 frame de pico de cada skill aliada em L1 a L3, mais a matriz do herói, mais cada cosmético novo.
+- **Medição:** HSV padrão (V = max, S = (max−min)/max) sobre o RGB sRGB de 8 bits do PNG capturado, pós-tonemap, no buffer de render, sem UI (px de render, ver a Seção 8). A UI é medida à parte, no canvas de 1080. Falha: bloco 4×4 com mediana na faixa. **Máscaras:** o telegraph fica em camada própria e sai da varredura; o preenchimento do decal (≥ 50% da área) é medido à parte e tem de estar **dentro** da faixa em L1 a L3; as tintas escura e clara ficam fora dela e se identificam pela máscara. **Conjunto mínimo de capturas:** L1 a L6 (tabela de 4.2e) × a grade de raridades r1 a r5 (item, decal de drop, UI), mais 1 frame de pico de cada skill aliada em L1 a L3, mais a matriz do herói, mais cada cosmético novo.
 - **Escopo:** nenhuma skill de jogador, raridade, cosmético, VFX aliado ou marca do selo entra nessa faixa (R1).
-- **Exceção medida:** só o telegraph. O dano sofrido **não** usa a faixa: é uma placa de ferro com número claro (7.2 e 7.7; decisão do usuário em 2026-11-03). Não há vinheta vermelha de vida baixa (decisão do usuário em 2026-11-03).
+- **Exceção medida:** só o telegraph. O dano sofrido **não** usa a faixa: é uma placa de ferro com número claro, na borda junto da barra de vida e sem exceção a 7.7 (7.2; decisão do usuário em 2026-11-03). Não há vinheta vermelha de vida baixa (decisão do usuário em 2026-11-03).
 - **Fogo do jogador:** decisão do usuário em 2026-11-03, a exclusividade se mantém. O fogo das skills do Mago (e de qualquer skill aliada) é **amarelo-branco pálido**: núcleo H 60° a 72°, S 20 a 40%, V ≥ 92% (decisão do usuário em 2026-11-03). O roxo-azulado foi reprovado: H 245° a 255° fica a 22 a 32° do Azul e a 14 a 24° do Roxo de raridade, e o decal de drop é no chão. **Regra de teste:** nenhum pixel de VFX aliado em H 44° a 58° com S ≥ 50%. O núcleo fica a ≥ 19° do crítico (H 41°), a ≥ 15° da brasa (H 45°) e a ≥ 15 pontos de S do Dourado no pior caso (26 no nominal); em 3500 K (L4) o matiz desce, e isso se mede. O jogo abre mão da "bola de fogo" laranja clássica para proteger o Pilar 4: qualquer pixel na faixa é perigo.
 
 **(b) Dourado de raridade.** Fica em H **48° a 58°**, nominal `#D8C54A`, a 10° da faixa proibida no ponto mais próximo (14° no nominal), a mesma folga que o herói ganhou: a luz quente puxa o matiz para baixo. É metálico, nunca pulsa e nunca é emissivo saturado. Se L6 ou L4 medirem o Dourado abaixo de H 44°, o nominal sobe para H 55°.
 
-**(c) Daltonismo.** Verde, Azul e Roxo se distinguem pelas molduras da Seção 3.5, por chanfros e pontas, e não só pela cor. O Verde de raridade fica a 63° do matiz da cura, e a cura tem forma circular. O Dourado se separa do perigo pela moldura dupla e pela ausência de pulso e de hachura. **Teste e critério de aprovação:** protanopia, deuteranopia e **tritanopia** (matrizes de Machado, Oliveira e Fernandes 2009, severidade 1,0, em RGB linear; o filtro é do technical-artist, 8.1 nota 4), sobre L1 a L3 e a grade de raridades. Aprova se, nas três: (1) as 5 molduras embaralhadas são identificadas 5 em 5, em cinza a 48 px; (2) **telegraph sobre o chão:** a serrilha e a hachura têm razão de luminância ≥ 3:1 contra o chão (o mesmo 3:1 de 7.7); (3) o Dourado e o preenchimento do telegraph têm ΔE2000 ≥ 15 (a medir).
+**(c) Daltonismo.** Verde, Azul e Roxo se distinguem pelas molduras da Seção 3.5, por chanfros e pontas, e não só pela cor. O Verde de raridade fica a 63° do matiz da cura, e a cura tem forma circular. O Dourado se separa do perigo pela moldura dupla e pela ausência de pulso e de hachura. **Teste e critério de aprovação:** protanopia, deuteranopia e **tritanopia** (matrizes de Machado, Oliveira e Fernandes 2009, severidade 1,0, em RGB linear; o filtro é do technical-artist, 8.1 nota 4), sobre L1 a L3 e a grade de raridades. Aprova se, nas três: (1) as 5 molduras embaralhadas são identificadas 5 em 5, em cinza a 48 px; (2) **telegraph sobre o chão:** a **melhor das duas tintas** (a de maior razão de luminância) tem ≥ 3:1 contra o chão em L1, L2 e L3, também em cada simulação; (3) o Dourado e o preenchimento do telegraph têm ΔE2000 ≥ 15 (a medir).
 
-**Risco já visível (conferido):** pelo hex nominal, `#FF4A1C` tem luminância relativa ≈ 0,26 e a areia `#8A7B66` ≈ 0,21, uma razão de ≈ 1,2:1. A cor sozinha reprova, e sob protanopia a leitura do telegraph depende da forma. Caminho se a medição reprovar: hachura em tinta escura (V ≤ 20%) sobre o preenchimento, razão ≈ 4:1 contra o chão. Isso muda o desenho do telegraph, então o usuário aprova se a medição reprovar.
+**Contas do telegraph (tintas opacas; razão = (Y1 + 0,05)/(Y2 + 0,05), com Y a luminância relativa de sRGB linear; refeitas à mão em 2026-11-03).** Chão: areia nominal Y = 0,205 (L1); areia em L2 (V ≈ 35) Y ≈ 0,10; dungeon (areia S 26%, V 65 a 75) Y = 0,306 a 0,420.
+- **Preenchimento sozinho:** `#FF4A1C` tem Y = 0,262, e a razão contra a areia é 1,2:1. A cor não carrega a forma, e sob protanopia a leitura depende dela.
+- **Escura `#1C1612`** (Y = 0,0086): L1 **4,4:1**; dungeon 6,1:1 (V 65) a 8,0:1 (V 75); L2 2,6:1, não basta.
+- **Clara `#FFC2A8`** (Y = 0,627): L2 **4,4:1**; L1 2,7:1; dungeon 1,9:1 (V 65) a 1,4:1 (V 75). Não bastam, e a escura cobre.
+- **Cada luz tem uma tinta ≥ 3:1.** A conta antiga ("hachura V ≤ 20% dá ≈ 4:1") estava errada: V 20% dá 3,1:1 na areia e ≈ 1,8:1 em L2, e só V ≈ 10% dá 4,2:1.
+
+**Condição:** o decal é unlit e o LUT do chefe não o escurece (a ordem decal/LUT é do technical-artist, `NOT SOURCEABLE`). Se o LUT o escurecer 1 stop (linear × 0,5), a clara cai para 2,4:1 em L2, e o melhor atingível é a clara `#FFE3D6` (Y = 0,81 → 0,405), que dá ≈ 3,0:1, perto do branco-quente do selo (H 39°, S 16%). **Spike:** a ordem decal/LUT, a tinta clara sob as três simulações de daltonismo e a foto de aparelho.
 
 **(d) Selo versus loja (R2).**
 - A assinatura de conquista é branco-quente → runa `#A9CFF2` → aço `#5E7FA6`, com **saturação ≤ 45%**, em glifo angular gravado.
@@ -187,9 +200,12 @@ O herói não tem swatch fixo. A regra é a do bloco (e): a saturação vem da a
 - O Azul de raridade tem saturação ≥ 65% e é moldura, então não se confunde com o aço do selo (os matizes ficam a 12° um do outro: 211° e 223°). Como o risco é real, vale um teste de miniatura cedo.
 
 **(e) Contraste de valor e regra do herói.**
-- **Cenário (chão da área jogável, inclusive sombreado, com o fill de 6.5):** V de 50 a 75%, S ≤ 35%. A dungeon de meio-dia (2.6) fica em V 65 a 75. Paredes e fundo fora da área jogável podem passar de 75.
-- **Horda:** V ≤ 30% (nominal 25), matiz de 200° a 230°, S ≤ 35%. A diferença de V entre o chão e a horda é de pelo menos 20 pontos, o que fecha por construção (50 − 30).
-- **Herói, teto de calor:** todo material do herói com matiz entre 350° e 38° tem **S ≤ 45%** no framebuffer final. Isso vale para a pele de qualquer raça e gênero e também para cabelo ruivo, couro, bronze e cobre. Na textura de origem (albedo), o teto é S ≤ 40%. Os 5 pontos de folga absorvem as luzes quentes (3500 K na vitória, 3200 K na Forja), que puxam a saturação para cima. Consequência de criação: armadura de bronze, couro ou cobre saturados fica proibida.
+**Pré-LUT** é a captura da mesma cena e luz com o peso do Volume de LUT em 0; **final** é a captura com o peso em 1. O runner (8.14) faz as duas em L2 e L5. Faixas de V e Δ ≥ 20 leem-se pré-LUT; faixa proibida, teto de calor e Michelson leem-se na final.
+- **Cenário (chão da área jogável, inclusive sombreado, com o fill de 6.5):** V de 50 a 75%, S ≤ 35%. A dungeon de meio-dia (2.6) fica em V 65 a 75. Paredes e fundo fora da área jogável podem passar de 75. **Pré-LUT.** Em L2, depois do LUT (−1 stop, linear × 0,5): V 35 a 55%. Conta: V 50 → Y 0,214 → 0,107 → V 36%; V 75 → Y 0,523 → 0,261 → V 55%. L5 (derrota): sem faixa de V do chão, porque não há horda nem telegraph.
+- **Horda:** V ≤ 30% (nominal 25), matiz de 200° a 230°, S ≤ 35%. A diferença de V entre o chão e a horda é de pelo menos 20 pontos, o que fecha por construção (50 − 30). **Pré-LUT.** Em L2, depois do LUT: V ≤ 21% (30 → Y 0,0733 → 0,0366 → 21%). Pós-LUT a diferença de V é 36 − 21 = 15 pontos, então vale o Michelson da 6.5, invariante à escala linear: (0,107 − 0,0366)/(0,107 + 0,0366) = 0,49 ≥ 0,35.
+- **Elite e chefe, corpo:** matiz 200° a 230° ou 20° a 40°, **S ≤ 20%**, **V ≤ 30%** (em L2, depois do LUT, V ≤ 21%); fica fora da faixa por V. A parte que ataca ("osso frio", 3.2) fica em V ≤ 92%, ≤ 15% da silhueta e, em px² de render, **≤ 1.000 (elite) e ≤ 4.000 (chefe)** (tetos provisórios, `A VERIFICAR` no concept do chefe). Razão osso/corpo no pior caso: V 80 → Y 0,604; V 30 → Y 0,073; (0,604 + 0,05)/(0,073 + 0,05) = 5,3:1 ≥ 3:1.
+  **Teste (L1 a L3, herói e chefe no quadro):** (1) o p99,9 de S das máscaras de elite e chefe (sem o osso) é ≤ 20% e ≥ 35 pontos abaixo da mediana de S do herói (≥ 55); (2) o bloco 4×4 de maior S entre as máscaras de herói e inimigos (fora o telegraph) é do herói; (3) as áreas de pixels com V ≥ 80 e S ≤ 15% cumprem os tetos.
+- **Herói, teto de calor:** todo material do herói com matiz entre 350° e 38° tem **S ≤ 45%** no framebuffer final. Isso vale para a pele de qualquer raça e gênero e também para cabelo ruivo, couro, bronze e cobre. Na textura de origem (albedo), o teto é S ≤ 40%. Os 5 pontos de folga absorvem as luzes quentes (3500 K na vitória, 3200 K na Forja), que puxam a saturação para cima. **A medir no spike:** se a captura em L4 ou L6 mostrar S > 45% em pele ou couro, o teto de origem desce (de 40% para o valor que fecha a medição, em passos de 2 pontos) ou a luz é compensada por balanço de branco. Consequência de criação: armadura de bronze, couro ou cobre saturados fica proibida.
 - **Herói, saturação:** a saturação do herói fica na armadura e no tecido, não na pele. A mediana de S desses pixels fica entre 55 e 80%, só em matizes fora da faixa proibida, e é no mínimo 25 pontos acima da S média do chão. Fora o telegraph, o pico de S da tela pertence ao herói.
 
 **Como o QA testa o herói** (captura no buffer de render, sem UI, com a máscara do herói por camada):
@@ -204,7 +220,7 @@ O herói não tem swatch fixo. A regra é a do bloco (e): a saturação vem da a
 | L2 | 7500 K (LUT do chefe) | arena de chefe | herói, 6.5, telegraph |
 | L3 | 6500 K | dungeon | herói, 6.5, telegraph |
 | L4 | 3500 K | vitória | herói |
-| L5 | 8000 K, −60% de S | derrota | herói |
+| L5 | 8000 K, −60% de S | derrota | herói (passo 4 lido pré-LUT: a dessaturação o reprovaria por construção) |
 | L6 | 3200 K | Forja e ritual | herói em close, skins |
 
 O Grimório (3500 K sobre o frame congelado) usa L1 mais UI e não é caso próprio.
@@ -230,8 +246,8 @@ O herói é um **corpo-base neutro**, e quem o veste é o jogador. A identidade 
 | **Seus outros heróis selados** | Mesma silhueta de função, saturação de material −15 pontos, sem contorno. Levam a **própria marca do selo** |
 | **NPC genérico** | Silhueta da função com set de raridade Branco, **sem marca do selo e sem insígnia**. A ausência é verdadeira: ele não conquistou nada |
 | **Horda** | Bloco com V ≤ 30%, matiz de 200 a 230°, de 40 a 70 px de render de altura, sem acessório solto |
-| **Elite** | 105 a 140 px (1,5 a 2× a maior horda do capítulo, 70 px), assimétrica, com uma "parte que ataca" em "osso frio" (3.2) que é o único detalhe de alto contraste do corpo |
-| **Chefe** | 240 a 350 px (≥ 1,2× o maior herói), com o realismo do herói, que de perto é a regra de quem ameaça |
+| **Elite** | 105 a 140 px (1,5 a 2× a maior horda do capítulo, 70 px), assimétrica, corpo H 200 a 230° ou 20 a 40°, S ≤ 20%, V ≤ 30% (4.2e), com uma "parte que ataca" em "osso frio" (3.2), ≤ 1.000 px², que é o único detalhe de alto contraste do corpo |
+| **Chefe** | 240 a 350 px (≥ 1,2× o maior herói), com o realismo do herói, que de perto é a regra de quem ameaça; corpo como o da elite (4.2e), osso frio ≤ 4.000 px², e o herói vem antes (3.4) |
 | **Pet** | Ver 5.6. Fica na camada de cenário e nunca acima da horda |
 
 ### 5.3 Raça e gênero
@@ -274,7 +290,7 @@ A raça mexe na **proporção dentro do bloco** (cabeça, ombro, centro de gravi
   - não usam a faixa proibida, metal em matiz de 44 a 58° com S ≥ 50%, tom de runa, emissivo, serrilha, hachura nem glifo angular;
   - um transmog só copia peças **da mesma função**.
 - **Pet (R7):** fica **na camada de cenário** (decisão do usuário em 2026-11-03, para proteger o P4; vende menos).
-  - altura de no máximo 35% da do herói, valores de cenário (V de 50 a 75%, S ≤ 35%);
+  - altura de no máximo 35% da do herói, valores de cenário lidos pré-LUT (V de 50 a 75%, S ≤ 35%; em L2, depois do LUT, V 35 a 55%);
   - sem partículas e sem emissivo;
   - nunca em menta, nunca com anel, nunca no matiz e valor da horda;
   - a "skill" do pet é uma animação dele, sem efeito no chão.
@@ -324,13 +340,13 @@ O tom é o de uma civilização antiga engolida pelo deserto: blocos retos monum
 
 ### 6.5 Regra de legibilidade personagem contra ambiente
 Três condições medidas no framebuffer final, na câmera de jogo:
-1. **Δ de valor local:** V_anel(i) é a **mediana** de V do chão num anel de 8 px em volta do inimigo i, lida numa captura **só do chão**: o mesmo frame com horda, herói, VFX e telegraph ocultos, então o anel nunca é feito de outros inimigos. V_inim(i) é a mediana de V na máscara do inimigo. Δ_i = V_anel − V_inim, também nas sombras. **Aprovado:** em ≥ 95% dos inimigos Δ_i ≥ 20, e nenhum abaixo de 12. Cena: 300 inimigos na densidade máxima de spawn.
+1. **Δ de valor local (lido pré-LUT):** V_anel(i) é a **mediana** de V do chão num anel de 8 px em volta do inimigo i, lida numa captura **só do chão**: o mesmo frame com horda, herói, VFX e telegraph ocultos, então o anel nunca é feito de outros inimigos. V_inim(i) é a mediana de V na máscara do inimigo. Δ_i = V_anel − V_inim, também nas sombras. **Aprovado:** em ≥ 95% dos inimigos Δ_i ≥ 20, e nenhum abaixo de 12. Cena: 300 inimigos na densidade máxima de spawn.
 2. **Frequência do chão:** em qualquer janela de 64×64 px (o tamanho de um inimigo), o desvio-padrão de V do chão fica em no máximo 8 pontos. A textura do chão nunca gera bordas com o tamanho de uma silhueta.
 3. **Herói:** a mediana de S cumpre a regra 4.2e.
 
 **Sombras na área jogável** (decisão do usuário em 2026-11-03): a sombra densa fica nas paredes e fora da área jogável, e um fill levanta o chão sombreado na área de combate, para a condição 1 valer também na dungeon de meio-dia (Seção 2.6). O contraste alto fica no fundo.
 
-**Teste:** as luzes L1, L2 e L3 (4.2e), cada uma na sua área com inimigos (diagonal luz-área, não produto cartesiano); a Forja não tem horda, e para ela só vale a regra do herói. Em luminância linear, com blur gaussiano σ = 2 px, mede-se o contraste de Michelson por inimigo, C = (L_anel − L_inim)/(L_anel + L_inim). **Aprovado com ≥ 95% dos inimigos em C ≥ 0,35** (o pior caso permitido, V 50 contra V 30, dá ≈ 0,49 para cinza neutro). O mesmo vale para o herói contra o anel dele. O brilho de tela a 30% é escala linear e o C o ignora, então vira uma foto de aparelho real por marco. Uma falha clareia a sombra ou suaviza a textura, nunca o personagem.
+**Teste:** as luzes L1, L2 e L3 (4.2e), cada uma na sua área com inimigos (diagonal luz-área, não produto cartesiano); a Forja não tem horda, e para ela só vale a regra do herói. Na captura **final**, em luminância linear, com blur gaussiano σ = 2 px, mede-se o contraste de Michelson por inimigo, C = (L_anel − L_inim)/(L_anel + L_inim). **Aprovado com ≥ 95% dos inimigos em C ≥ 0,35** (o pior caso permitido, V 50 contra V 30, dá ≈ 0,49 para cinza neutro). O mesmo vale para o herói contra o anel dele. O brilho de tela a 30% é escala linear e o C o ignora, então vira uma foto de aparelho real por marco. Uma falha clareia a sombra ou suaviza a textura, nunca o personagem.
 
 ## 7. UI/HUD Visual Direction
 
@@ -367,10 +383,10 @@ O Poder de Combate aparece no meta-jogo e na tela pré-fase, **nunca no HUD de c
 |---|---|---|
 | Dano causado | `#E6EAF0` | 14 pt |
 | Crítico | `#F2DDB0`, marcado sobretudo por escala e peso | 20 pt, pop de no máximo 1,15× |
-| Dano sofrido | `#E6EAF0` dentro de uma placa `#1E242C` a 80%, com prefixo "−" (fora da faixa de 4.2a) | 16 pt |
+| Dano sofrido | `#E6EAF0` dentro de uma placa `#1E242C` a 80% (opacidade única), com prefixo "−", na borda junto da barra de vida (fora da faixa de 4.2a) | 16 pt (48 px); placa 64×28 dp (192×84 px) |
 | Cura | menta, sempre com **●** antes (4.1 exige forma circular) | 14 pt |
 
-- **Dano sofrido (decisão do usuário em 2026-11-03):** placa de ferro com número claro, ancorada no herói e **caindo**, enquanto os números aos inimigos sobem; a placa mede no máximo 96×40 no canvas, a 75% de opacidade, no máximo 3 por segundo. O chip de vida perdida é um contorno vazio `#8C96A3` que drena em 400 ms, e o corpo do herói pisca em 3 quadros a 30 fps (S ≤ 10%). O som é do audio-director; o requisito visual é um gancho sincronizado ao flash. Isso remove a exceção da faixa proibida: só o telegraph fica nela.
+- **Dano sofrido (padrão seguro, decisão do usuário em 2026-11-03):** placa de ferro com número claro **na borda, encostada à barra de vida do herói** (8 dp de distância, dentro da safe area, no eixo da barra). Nunca no centro nem sobre o herói. Mede 64×28 dp (192×84 px; 1 dp = 3 px), opacidade única de 80%, no máximo 3 por segundo, 600 ms visível e sem movimento. Contraste da placa a 80% sobre o chão mais claro permitido (V 75, Y 0,523): Y da placa `#1E242C` = 0,017, Y composto = 0,8 × 0,017 + 0,2 × 0,523 = 0,118, Y do número `#E6EAF0` = 0,820, razão (0,820 + 0,05)/(0,118 + 0,05) = **5,2:1**. A largura do número (6 glifos × ≈ 0,45 em × 48 px ≈ 130 px, mais 2 × 18 px de padding = 166 px ≤ 192) usa 0,45 em estimado: `A VERIFICAR` na fonte. Marcam o golpe, no mesmo quadro: a placa, o chip (7.4), o flash do corpo do herói e o som (do audio-director). Só o telegraph usa a faixa.
 - Abreviação a partir de 5 caracteres (por exemplo, 12,4k).
 - **Densidade:** a horda gera **um número somado por golpe de área**, não um por inimigo. Crítico e dano em elite ou chefe são individuais. Teto de 24 números na tela (knob), regulado pelo mesmo controle do jogador que limita os efeitos aliados (P4).
 
@@ -401,7 +417,7 @@ Regras de convivência:
 | Ritual (entintar, selo, carimbo) | 600 a 1200 ms | sine in-out |
 
 **Nunca anima no combate:** pulso, piscar contínuo, tremor da UI e barras que balançam. As únicas exceções:
-- **chip** de vida perdida, em contorno vazio `#8C96A3`, que drena em 400 ms, e o flash do corpo do herói em 3 quadros a 30 fps;
+- **golpe sofrido, três marcas no mesmo quadro:** o **chip** de vida perdida na barra (contorno vazio `#8C96A3`, drena em 400 ms), a placa de número (7.2, sem animação) e o flash do corpo do herói em 3 quadros a 30 fps (S ≤ 10%);
 - suprema pronta: um flash único de 150 ms, com o estado de pronta lido também pela forma (moldura acesa e escala);
 - números subindo por 0,6 s.
 
@@ -420,7 +436,7 @@ A carga da suprema é um **molde enchendo de baixo para cima** em `#F2DDB0`, nã
 - **Paleta 4.4:** acento de UI em aço neutro `#8C96A3`, distinto do aço do selo `#5E7FA6`, que é exclusivo da conquista.
 - **Barras de vida** sem vermelho: preenchimento `#E6EAF0`. Vida baixa se sinaliza pela barra e por som, **sem vinheta vermelha** (decisão do usuário; ver 4.2a).
 - **Faixa proibida:** zero pixels de UI nela, sem exceção (o dano sofrido usa placa de ferro com número claro, 7.2).
-- **Ordem de render (decisão do usuário em 2026-11-03, híbrido):** cenário < horda < aliados < herói < números aos inimigos (world-space) < **telegraph** < placa de dano sofrido do herói < HUD de borda. A HUD de borda cai para 40% de opacidade quando um telegraph passa sob ela. Nenhuma UI opaca oclui o telegraph; a única exceção é a **placa de dano sofrido** (≤ 96×40 no canvas, 75% de opacidade, no máximo 3 por segundo), que o creative-director precisa confirmar.
+- **Ordem de render (decisão do usuário em 2026-11-03):** cenário < horda < aliados < herói < números aos inimigos (world-space) < placa de dano sofrido < **telegraph** < HUD de borda. A placa é um quad ancorado à câmera junto da barra, desenhado no passe 3D (technical-artist; custo `NOT SOURCEABLE`), então o telegraph a cobre e ela nunca o oclui. A HUD de borda cai para 40% quando um telegraph passa sob ela; a placa fica em 80% fixos. **Sem exceção:** nenhuma UI opaca oclui o telegraph.
 - **Opacidade e densidade de efeitos (P4):** o controle do jogador vale para VFX aliado, números de dano e pet, e **nunca para o telegraph**. Fica acessível pela pausa, com prévia ao vivo.
 - **Mobile:** nenhum painel translúcido de tela cheia no combate. Safe areas respeitadas, com recuo para os gestos de navegação.
 - **Requisitos de UX citados pelo ux-designer de memória, a verificar antes de registrar em `design/accessibility-requirements.md`:** alvo de toque de 48×48 dp com 8 dp entre alvos (Material Design; iOS HIG: 44 pt); contraste de texto de 4,5:1 (3:1 para texto grande, WCAG 1.4.3); contraste de componente de 3:1 (WCAG 1.4.11); até 3 flashes por segundo (WCAG 2.3.1).
@@ -429,7 +445,7 @@ A carga da suprema é um **molde enchendo de baixo para cima** em `#F2DDB0`, nã
 ### Inegociáveis
 1. Nada de UI no plano do chão (inclui o anel).
 2. Nenhum pixel na faixa 4.2a além do telegraph.
-3. Telegraph nunca ocluído por UI opaca (única exceção: a placa de dano sofrido, 7.7).
+3. Telegraph nunca ocluído por UI opaca, sem exceção.
 4. Bevel gravado e escudo só na conquista.
 5. Nada pulsa no combate.
 6. Mínimo de 14 pt no combate.
@@ -447,7 +463,7 @@ A carga da suprema é um **molde enchendo de baixo para cima** em `#F2DDB0`, nã
 | Vinheta vermelha de vida baixa | — | A exceção "dano inimigo" não a cobre | **Não há vinheta** |
 
 ### 7.9 Pendências para o sign-off (AD-ART-BIBLE)
-- **Números de dano abaixo do telegraph (resolvido, D4):** os números aos inimigos são world-space no passe 3D, antes do telegraph; o dano sofrido é a placa de UI da 7.7. **Pendente:** o creative-director confirma a exceção da placa ao inegociável 3, e o technical-artist implementa o passe 3D (o custo mobile da projeção mundo→tela é NOT SOURCEABLE).
+- **Números de dano abaixo do telegraph (resolvido, D4 revisto):** os números aos inimigos são world-space no passe 3D, antes do telegraph; a placa de dano sofrido fica na borda, junto da barra, abaixo do telegraph e sem exceção (7.7). **Pendente:** o technical-artist implementa o passe 3D da placa e dos números. **Futuro, opcional:** o creative-director pode aprovar uma placa ancorada no herói como exceção ao inegociável 3 e à regra-mãe da Seção 7; hoje não há exceção.
 - **Anéis aliados contra o círculo da cura (resolvido, D1):** ver a Seção 3.6 (anel fechado só da cura; efeito aliado em arco aberto ou disco difuso).
 - **Escudo pentagonal contra o hexágono apontado do Roxo:** teste de miniatura junto com o de 4.2d.
 - **Fontes:** licença e glifos de pt-br das candidatas.
@@ -488,7 +504,8 @@ Para arquivos de arte: `categoria_nome_variante_tamanho`, tudo em minúsculas, c
 
 Códigos: raça `orc|hum|elf|dwf`, gênero `m|f`, raridade `r1` a `r5`. Raridade nunca leva nome de cor.
 - Peça de set: `char_tank_chest_ironwall_hum_m.fbx`
-- Variante de raridade: `mat_tank_chest_ironwall_r4.mat`
+- Preset de raridade (parâmetros de 1 slot, 8.6 e 8.8): `par_rarity_r4.asset`
+- Material do herói (1 por conjunto equipado, base com os slots): `mat_char_hero_gear_base.mat`
 - Horda: `enm_horde_ghoul_a.fbx`
 - Elite: `enm_elite_brute_01.fbx`
 - Chefe: `enm_boss_sandwyrm_01.fbx`
@@ -597,7 +614,7 @@ O VFX Graph em mobile é **NOT SOURCEABLE**; o spike compara VFX Graph com o sis
 - **Pipeline de cosméticos** (provas retidas em `production/qa/evidence/`):
   - **Skin (R1 e 5.6):** as malhas em todos os esqueletos, com o fit próprio do Anão; a captura em cinza a 48 px lado a lado com o set base; bounding box ≤ +10%; a matriz de 6 luzes (4.2e) com zero blocos 4×4 na faixa proibida e a mediana de S conforme a 4.2e; a declaração de que não usa emissivo, metal entre 44 e 58° com S ≥ 50, tom de runa, serrilha, hachura nem glifo; e a máscara das âncoras de conquista com sobreposição zero.
   - **Transmog:** nenhum asset novo. Entrega a tabela de mapeamento travada na mesma função e uma captura mostrando a marca do selo visível.
-  - **Pet (R7):** altura ≤ 35% da do herói; capturas nas luzes L1 a L6 com V de 50 a 75% e S ≤ 35%; a prova de que não é menta, não tem anel e não está no matiz e valor da horda; a "skill" como **só um clipe de animação**, sem partícula, emissivo ou decal de chão; e a atribuição à camada de cenário.
+  - **Pet (R7):** altura ≤ 35% da do herói; capturas em L1 a L6 pré-LUT com V de 50 a 75% e S ≤ 35%, e em L2 final com V de 35 a 55%; a prova de que não é menta, não tem anel e não está no matiz e valor da horda; a "skill" como **só um clipe de animação**, sem partícula, emissivo ou decal de chão; e a atribuição à camada de cenário.
 
 ### 8.9 Divergências e decisões (2026-11-03)
 
@@ -673,7 +690,17 @@ O risco é de prazo, não de qualidade. Este bloco **não altera o MVP do concei
 - **Saída:** CSV de pass/fail por regra, PNGs e uma contact sheet por skin em `production/qa/evidence/`.
 - **Execução:** `-runTests` em batchmode **com GPU**, sem `-nographics` (`A VERIFICAR`).
 - **Manual:** julgar a silhueta a 48 px e a foto de aparelho.
-- **Escala:** uma skin roda hum_m, hum_f e dwf_m (pior fit) × 6 luzes × 2 enquadramentos = 36 capturas. Os outros esqueletos só quando o fit muda.
+- **Escala:** a skin roda uma matriz **reduzida** de 36 capturas: hum_m, hum_f e dwf_m (pior fit) × 6 luzes × 2 enquadramentos. O herói completo (set novo, mudança de fit, de LUT ou de luz) roda a matriz da 4.2e: 4 raças × 2 gêneros × 6 luzes × 2 enquadramentos = **96**. Em L2 e L5 cada caso sai também pré-LUT.
+
+### 8.15 Entregas de arte que a bible ainda não traz (Pré-Produção)
+Um terceiro ainda precisaria de:
+- **Presets r1 a r5:** tom de metal, rugosidade e padrão de friso, em valores (`par_rarity_r1` a `r5`).
+- **Por capítulo:** lista de materiais dominantes e o landmark (6.1).
+- **Bestiário e concepts de silhueta:** horda, elite e chefe, com o corpo de 4.2e e o osso frio dentro dos tetos de px².
+- **Geometria final do telegraph:** formas por ataque (cone, círculo, linha), com a hachura e a serrilha de 3.6.
+- **Ordem decal/LUT** do telegraph (2.2 e 4.2c), a validar no spike.
+- **Medições do spike:** largura de glifo da fonte (7.2) e o piso do Tripo.
+- **Licença comercial do Tripo** (8.8). **Prazo sugerido:** primeiro item da Pré-Produção, antes de qualquer asset do Tripo entrar num build vendável. **Dono:** o usuário.
 
 ## 9. Reference Direction
 
@@ -689,7 +716,7 @@ Cinco referências. Cada uma alimenta uma seção diferente da bible, então nen
 
 ### 9.3 World of Warcraft, Zul'Farrak
 - **O que tomar:** a dungeon composta em volta de **um** landmark monumental que se lê só pela silhueta, como a pirâmide de degraus de onde a horda desce. Alimenta a 6.1 (cada capítulo troca o landmark) e a 6.3 (o assombro vem da escala, não do acúmulo). Tomar também o albedo pintado em manchas largas e de baixa frequência (6.2).
-- **O que evitar:** as proporções estilizadas (ombreiras enormes), contra o teto de 10 a 15% da 3.1. Evitar a saturação do cenário pintado, contra o S ≤ 35% da 4.2e. Evitar a luz pintada dentro do albedo, que quebra as 4 luzes da Seção 4. Evitar entalhes de glifo em parede e chão, contra a 6.1. Evitar a cor por classe, contra o princípio A (função pela forma).
+- **O que evitar:** as proporções estilizadas (ombreiras enormes), contra o teto de 10 a 15% da 3.1. Evitar a saturação do cenário pintado, contra o S ≤ 35% da 4.2e. Evitar a luz pintada dentro do albedo, que quebra as 6 luzes (L1 a L6, 4.2e). Evitar entalhes de glifo em parede e chão, contra a 6.1. Evitar a cor por classe, contra o princípio A (função pela forma).
 
 ### 9.4 Joseph Wright of Derby, *An Iron Forge* (1772)
 - **O que tomar:** a luz de ponto único. A barra incandescente é a única fonte de luz, ilumina o metal e os rostos por baixo, e o fundo é quase preto. Alimenta a 2.4 (valor ≤ 15% e um ponto único), a 2.5 e a zona escura atrás da bigorna da 6.3.
@@ -703,4 +730,4 @@ Cinco referências. Cada uma alimenta uma seção diferente da bible, então nen
 Summoners War, Lords Mobile e Diablo 2 valem para o design (runas, forja, respec) e não para a arte. Os três marcam raridade por cor, o que viola a 3.5.
 
 ### Lacuna
-Nenhuma referência cobre o VFX aliado. Isso inclui o fogo amarelo-branco ou roxo-azulado (4.2a) e o critério que separa o anel aliado do círculo da cura (pendência 7.9). Também falta referência para a linguagem de placa forjada da UI (Seção 7). Os jogos de origem resolvem os dois de jeitos que violam a 4.2a ou a 7. Uma referência dedicada entra quando a 7.9 for decidida.
+O fogo aliado (amarelo-branco pálido, 4.2a; o roxo-azulado foi reprovado) e o critério do anel (3.6) estão decididos, e a pendência 7.9 está resolvida. **Ainda falta referência** para: (1) VFX aliado liso e translúcido em jogo de horda mobile; (2) a linguagem de placa forjada da UI (Seção 7); (3) telegraph de duas tintas legível em chão claro e escuro (3.6); (4) a luz de LUT do chefe (2.2). Os jogos de origem resolvem os dois primeiros de jeitos que violam a 4.2a ou a Seção 7. As referências entram na Pré-Produção.
