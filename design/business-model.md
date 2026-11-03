@@ -145,8 +145,10 @@ Crash e ANR dentro do Play vitals; retenção D1, D7 e D30; % de pagantes; recei
 | 6 | DLC | **Cosméticos:** skins e transmogs temáticos e pets. O pet com "1 skill e 1 habilidade" que pega loot, poção de cura e atributo foi reprovado no teste de catálogo e virou **só animação** (R7). |
 | 7 | Vídeo ao fim da partida (PVE) para dobrar os ganhos | **Só dobra a moeda de jogo sem poder** (R6). |
 | 8 | Vídeo durante a partida para pegar skill (rara ou legend) | **Vetado.** |
+| 9 | Escopo da monetização no lançamento (observação do usuário: "no lançamento vamos colocar só SDK de vídeo, um pet free") | **Loja completa no lançamento** (esclarecido pelo usuário em 2026-11-03): loja, IAP e vídeo recompensado entram no lançamento, e o **pet grátis** é só um item do catálogo dado de brinde, só de animação (R7). O escopo dos sistemas #27, #29, #37 e #38 não muda. |
+| 10 | Preço por SKU, orçamento de aquisição e gatilho de saída (seção 12) | **Adiados pelo usuário** ("A DEFINIR DEPOIS"). O gatilho de saída precisa estar escrito e commitado antes do soft launch (mês 19 a 20); o preço por SKU, antes do GDD #27; a aquisição paga igual a zero (condição 1 de viabilidade) segue **não confirmada**. |
 
-**Ainda em aberto:** preço por SKU, orçamento de aquisição, gatilho de saída (seção 12); o Producer precisa reavaliar o cronograma com o SDK de vídeo; as taxas de ganho e o teto da moeda de jogo (GDD #26 e #27); o CD precisa revisar a assinatura visual dos cosméticos de moeda contra os de conquista (R2).
+**Ainda em aberto, fora do alcance do usuário agora:** o Producer precisa reavaliar o cronograma com o SDK de vídeo; as taxas de ganho e o teto da moeda de jogo (GDD #26 e #27); o creative-director precisa revisar a assinatura visual dos cosméticos de moeda contra os de conquista (R2).
 
 ## 12. Dados que só o usuário pode fornecer
 
