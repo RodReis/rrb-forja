@@ -116,8 +116,12 @@ forte foi justamente ver a build selada em ação, que é o coração do pilar "
 2. A justificativa do selo foi por eficácia e não por identidade.
 3. O loop do "só mais uma" (voltar para registrar uma skill) não se manifestou.
 
-Elas não bloqueiam a escrita dos GDDs, mas o GDD do Grimório e do selamento deve ser validado com
-testadores externos antes de ser fechado.
+O usuário é dev solo e não haverá testadores externos. A validação do GDD do Grimório e do selamento é por
+métricas de log com n = 1, definidas nos critérios de aceite do MVP em `design/gdd/game-concept.md`.
+
+*Correção de 2026-11-03, no `/design-review` do conceito:* a saturação do Grimório **não** era só uma questão de
+tuning do GDD. Ela é estrutural (o systems-designer discordou deste relatório, e o CD concordou com ele). A regra de
+escassez entrou no conceito: o jogador escolhe 1 a 2 skills por chefe de fase, com nível mínimo de elegibilidade.
 
 ---
 
@@ -187,7 +191,7 @@ Não se aplica (veredito PROCEED).
   O pico de satisfação foi a Prova do Selo, ou seja, *usar* a build. Não foi a escolha. O testador não relatou
   surpresas durante o jogo.
 - **What would we test differently next time?**
-  - Usar testadores externos desde o início, porque o designer não é um testador ingênuo.
+  - O designer não é um testador ingênuo e não haverá testadores externos. Compensar com critérios escritos antes de jogar, justificativa registrada antes da Prova e configurações de knob ocultas, identificadas só no log.
   - Coletar o Log obrigatoriamente.
   - Mover pelo cursor em vez de WASD.
   - Medir o "só mais uma" com uma pergunta direta após a Prova: "Quer forjar outro herói?"
