@@ -111,7 +111,7 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 
 | # | System Name | Category | Priority | Status | Design Doc | Depends On |
 |---|-------------|----------|----------|--------|------------|------------|
-| 1 | Dados e balanceamento | Core | MVP | Designed | [dados-e-balanceamento.md](dados-e-balanceamento.md) | — |
+| 1 | Dados e balanceamento | Core | MVP | In Review | [dados-e-balanceamento.md](dados-e-balanceamento.md) | — |
 | 2 | Simulação de combate determinística | Core | MVP | Not Started | — | 1 |
 | 3 | Fluxo de fase (inferred) | Core | MVP | Not Started | — | 1, 2, 28 |
 | 4 | Input e câmera de combate | Core | MVP | Not Started | — | 3 |
@@ -138,7 +138,7 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 | 25 | Forja e sets | Economy | MVP | Not Started | — | 10, 19, 24 |
 | 26 | Economia e tetos | Economy | Vertical Slice | Not Started | — | 1, 24, 25, 28 (audita 18 e 27 quando existirem) |
 | 27 | Monetização e loja | Economy | Alpha | Not Started | — | 26 |
-| 28 | Save local (inferred) | Persistence | MVP | Designed | [save-local.md](save-local.md) | 1 |
+| 28 | Save local (inferred) | Persistence | MVP | In Review | [save-local.md](save-local.md) | 1 |
 | 29 | Serviços online | Persistence | Alpha | Not Started | — | 1, 2, 22, 27, 28, 37 |
 | 30 | UI de meta-jogo | UI | MVP | Not Started | — | 16, 17, 19, 24, 25 |
 | 31 | Áudio | Audio | Vertical Slice | Not Started | — | 6, 10, 11, 17 |
@@ -201,16 +201,16 @@ A categoria Narrative do template foi removida: o conceito mantém a narrativa m
 
 Sistemas em ordem de dependência: projete e construa de cima para baixo.
 
-### Foundation Layer (no dependencies)
+### Foundation Layer (no dependencies, except #28 on #1)
 
 1. **#1 Dados e balanceamento**: todo valor de gameplay é dado; o remote config é injetado depois pelo #29, sem o #1 depender de rede.
-2. **#28 Save local**: só serializa; cada sistema é dono da sua fatia.
+2. **#28 Save local** — depends on: 1 (Hard: IDs estáveis, carimbo da versão e resposta "ID desconhecido"): só serializa; cada sistema é dono da sua fatia.
 3. **#37 Entitlements**: interface de leitura das posses de cosméticos comprados; o #29 a alimenta e o resto do jogo só lê (Alpha).
 
 ### Core Layer (depends on foundation)
 
 1. **#2 Simulação determinística** — depends on: 1
-2. **#3 Fluxo de fase** — depends on: 2
+2. **#3 Fluxo de fase** — depends on: 2, 28
 3. **#5 Log de eventos** — depends on: 2, 28
 4. **#6 Combate e dano** — depends on: 1, 2
 
@@ -221,7 +221,7 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 3. **#7 Horda, waves e inimigos** — depends on: 1, 2, 6
 4. **#19 Herói** — depends on: 10, 11 (stub no MVP), 28
 5. **#16 Grimório** — depends on: 3, 5, 8, 10, 19, 28
-6. **#17 Selamento da build** — depends on: 8, 16, 19
+6. **#17 Selamento da build** — depends on: 8, 16, 19, 28
 7. **#9 Oferta de cartas** — depends on: 2, 3, 8, 10, 16 (só leitura)
 8. **#20 Campanha e capítulos** — depends on: 3, 7, 11 (stub no MVP)
 9. **#24 Inventário** — depends on: 7, 20
@@ -230,7 +230,7 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 12. **#13 IA de herói e companheiro** — depends on: 2, 6, 10, 17
 13. **#21 Poder de Combate** — depends on: 19, 25
 14. **#14 Dungeons e trindade** — depends on: 6, 7, 13, 17, 19, 21
-15. **#26 Economia e tetos** — depends on: 1, 24, 25
+15. **#26 Economia e tetos** — depends on: 1, 24, 25, 28
 16. **#18 Reforja** — depends on: 8, 9, 17, 26
 17. **#15 Varredura** — depends on: 17, 20, 24, 26
 18. **#27 Monetização e loja** — depends on: 26
@@ -273,7 +273,7 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 | Order | System | Priority | Layer | Agent(s) | Est. Effort |
 |-------|--------|----------|-------|----------|-------------|
 | 1 | #1 Dados e balanceamento | MVP | Foundation | systems-designer | S |
-| 2 | #28 Save local | MVP | Foundation | technical-director | S |
+| 2 | #28 Save local | MVP | Foundation | technical-director | L |
 | 3 | #2 Simulação determinística | MVP | Core | technical-director, systems-designer | L |
 | 4 | #3 Fluxo de fase | MVP | Core | game-designer, systems-designer | M |
 | 5 | #5 Log de eventos e instrumentação | MVP | Core | qa-lead, analytics-engineer | M |

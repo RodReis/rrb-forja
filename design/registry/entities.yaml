@@ -147,10 +147,10 @@ formulas:
       - r
       - ticks_per_second
     output_range: [-3.4e38, 3.4e38]
-    expression: "(float)(r / 30) computed in decimal, one rounding"
-    notes: "Bounded by the knob's safe range divided by 30. Summing 30 ticks need not equal r exactly (100/s gives about 99.99999)."
+    expression: "r / 30 as a per-tick float; a single path, chosen by the #1 data ADR (divide in decimal, or multiply by SimClock.TickSeconds)"
+    notes: "Bounded by the knob's safe range divided by 30. The path is open (GDD OQ-2): dividing in decimal gives 3.33333325f for 100/s, multiplying by 1f/30f gives 3.3333335f. Summing 30 ticks is not exactly r on either path. Provisional, to be re-evaluated."
     added: 2026-11-03
-    revised: ""
+    revised: 2026-11-03
   - name: capacidade_ok
     status: active
     source: design/gdd/dados-e-balanceamento.md
@@ -223,23 +223,29 @@ formulas:
     variables:
       - max_seen_utc
       - now_utc
-    output_range: [0, 9223372036854775807]
-    expression: "max_seen_utc = max(max_seen_utc_saved, now_utc); effective_utc = max_seen_utc"
-    notes: "Milliseconds UTC, never decreases. Read by #26 Economy for caps and offline accrual (K periods knob in #1)."
+      - build_utc
+      - clock_sanity_ms
+    output_range: [build_utc, "build_utc + clock_sanity_ms"]
+    expression: "if not (0 <= max_seen_utc_saved <= build_utc + clock_sanity_ms) then max_seen_utc_saved = 0; now_ok = build_utc <= now_utc <= build_utc + clock_sanity_ms; max_seen_utc = max(max_seen_utc_saved, now_utc if now_ok else max_seen_utc_saved); effective_utc = min(max(max_seen_utc, build_utc), build_utc + clock_sanity_ms)"
+    notes: "Milliseconds UTC. Never decreases, except that a saved max_seen_utc outside [0, build_utc + clock_sanity_ms] is a corrupted field and counts as 0 (event 'saved time invalid'). Never overflows int64: the out-of-window clock is discarded ('invalid clock' event) and effective_utc is clamped by min(). Only #29 with signed server time may otherwise reduce max_seen_utc. max_seen_utc advancing does not dirty the save; it is written with the next commit. The #1 rejects clock_sanity_ms <= 0 or a value that overflows int64 with build_utc. Read by #26 Economy for caps and offline accrual. The 'K periods' knob does NOT exist in the #1 GDD yet (save-local.md OQ-8)."
     added: 2026-11-03
-    revised: ""
+    revised: 2026-11-03
+    # was (save-local.md, /design-review 2026-11-03, 1st pass): output_range [0, 9223372036854775807]; expression "max_seen_utc = max(max_seen_utc_saved, now_utc); effective_utc = max_seen_utc"
+    # was (save-local.md, /design-review 2026-11-03, 2nd pass): expression "now_ok = ...; max_seen_utc = max(max_seen_utc_saved, now_utc if now_ok else max_seen_utc_saved); effective_utc = max(max_seen_utc, build_utc)" (saved value not sanitized, no min() clamp: output_range was not guaranteed)
   - name: save_sequence
     status: active
     source: design/gdd/save-local.md
     referenced_by:
       - design/gdd/save-local.md
     variables:
-      - save_sequence_saved
-    output_range: [1, 9223372036854775807]
-    expression: "save_sequence_saved + 1, only when a commit completes and is verified"
-    notes: "A failed write consumes no number. Used by #29 (Alpha) to detect a save that regressed."
+      - highest_sequence_seen
+    output_range: [1, 9007199254740993]
+    expression: "save_sequence_attempt = max(highest_sequence_reserved_this_session, highest_sequence_in_files_with_valid_checksum across main, backup and temp) + 1, reserved at the start of each attempt; a file whose save_sequence is above 2^53 is treated as corrupted"
+    notes: "Strictly increasing along the live save, gaps allowed: within a session a failed attempt consumes its number. After a restoration the number MAY repeat (the corrupted commit does not count), so it is not unique across restores. Files with an invalid checksum are ignored. Used by #29 (Alpha), together with the content hash, to tell a save that regressed from one that forked."
     added: 2026-11-03
-    revised: ""
+    revised: 2026-11-03
+    # was (save-local.md, /design-review 2026-11-03, 1st pass): expression "save_sequence_saved + 1, only when a commit completes and is verified"; notes "A failed write consumes no number."
+    # was (save-local.md, /design-review 2026-11-03, 2nd pass): output_range [1, 9223372036854775807]; expression "highest_sequence_seen (in memory and on disk, across main, backup and temp) + 1, reserved at the start of each attempt"; notes "Strictly increasing, unique per attempt" (read unverified files; unique across restore was not true)
 
 # Example:
 #
