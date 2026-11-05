@@ -1,0 +1,143 @@
+{
+  "_leia_me": "Textos do painel que nao da para ler automaticamente dos arquivos do projeto. O script dashboard/atualizar.py junta este arquivo com os dados calculados. Edite aqui o historico, o que falta, as notas e os resumos. Tokens que o script troca sozinho: {git} {feitos} {total} {mvp_feitos} {mvp_total} {adrs} {adrs_aceitos} {historias} {epicos} {revisados} {rodadas}. HTML simples (<b>, <strong>) e permitido.",
+
+  "ajuda_atualizar": "Atualiza sozinho (hook do Claude Code) e com: python dashboard/atualizar.py",
+
+  "proximo": 7,
+
+  "fase_resumo": {
+    "1": "estamos fechando o conceito do jogo, a arte e o mapa dos sistemas.",
+    "2": "estamos <strong>desenhando no papel</strong> como cada parte funciona, antes de programar. O conceito está pronto e congelado. <strong>Ainda não existe código do jogo</strong>, e isso é esperado nesta etapa.",
+    "3": "estamos decidindo <strong>como o jogo será construído por dentro</strong> (decisões técnicas, testes e regras de código) antes de programar.",
+    "4": "estamos <strong>preparando a obra</strong>: telas, blocos de trabalho (épicos), histórias e o primeiro sprint.",
+    "5": "estamos <strong>programando o jogo</strong>, história por história, com testes e revisão.",
+    "6": "estamos <strong>polindo</strong>: desempenho, equilíbrio, testes com jogadores e segurança.",
+    "7": "estamos <strong>lançando</strong> o jogo e acompanhando os primeiros dias."
+  },
+
+  "chips": [
+    ["ok", "✓ Conceito, arte e mapa de sistemas prontos"],
+    ["warn", "◐ {feitos} de {total} sistemas desenhados"]
+  ],
+
+  "nomes": {
+    "5": "Log de eventos",
+    "12": "Feedback de combate, efeitos e HUD",
+    "17": "Selamento da build",
+    "24": "Inventário",
+    "37": "Entitlements"
+  },
+
+  "descricoes": {
+    "1": "Onde ficam todos os números do jogo (dano, vida, tempos) e a checagem de que estão certos.",
+    "2": "O motor que faz cada partida calcular sempre o mesmo resultado, 30 vezes por segundo.",
+    "3": "Controla a partida: começo, XP, subir de nível, vitória, derrota e tentar de novo.",
+    "4": "O toque na tela: joystick, botão de esquiva e a câmera do combate.",
+    "5": "O diário do jogo: registra o que acontece para medirmos se funciona.",
+    "6": "Quem acerta quem, quanto dói, esquiva, empurrão e o peso de cada golpe.",
+    "7": "As ondas de inimigos, os elites e o chefe de cada fase.",
+    "8": "As habilidades que você ganha ao subir de nível e como elas evoluem.",
+    "9": "As 3 cartas que aparecem quando você sobe de nível.",
+    "10": "Tanque e DPS (depois Mago e Curandeiro): o papel de cada herói.",
+    "11": "O Orc primeiro; depois Humano, Elfo e Anão com habilidades próprias.",
+    "12": "Efeitos, sons de impacto e a tela com vida e botões.",
+    "13": "Heróis controlados pelo jogo que completam o seu grupo.",
+    "14": "Masmorras com tanque, DPS, mago e curandeiro.",
+    "15": "Repetir fases já vencidas sem jogar, para juntar materiais.",
+    "16": "O livro onde você registra as skills que venceram cada chefe.",
+    "17": "O ritual que torna permanente a build escolhida do herói.",
+    "18": "Trocar uma skill já selada, com custo e regras.",
+    "19": "Criar heróis, subir de nível e guardar a sua coleção.",
+    "20": "A sequência de fases, capítulos e chefes de capítulo.",
+    "21": "O número que mostra a força do herói para entrar em conteúdos.",
+    "22": "Placar por função e por desempenho.",
+    "23": "Melhorias extras de equipamento, depois do lançamento.",
+    "24": "Materiais, moedas e itens que você coleta.",
+    "25": "Criar e melhorar peças de equipamento por raridade.",
+    "26": "Limites diários de recompensa e equilíbrio da economia.",
+    "27": "A loja do jogo (grátis para jogar) sem vender poder.",
+    "28": "Gravar o seu progresso no celular sem nunca perder.",
+    "29": "Servidor: backup na nuvem, ranking e validação de compras.",
+    "30": "As telas fora da fase: herói, grimório e forja.",
+    "31": "Música, vozes e efeitos sonoros.",
+    "32": "Os primeiros minutos: ensinar a jogar.",
+    "33": "Opções para jogar com conforto: efeitos, vibração e tamanho.",
+    "34": "Medir o que os jogadores fazem e manter conteúdo novo.",
+    "35": "Jogar com 3 amigos contra a masmorra.",
+    "36": "Jogador contra jogador.",
+    "37": "Controlar o que cada conta possui.",
+    "38": "Visuais que não dão poder.",
+    "39": "Avisos e permissões exigidos pelas lojas.",
+    "40": "A fase jogada sozinha, em conteúdo já vencido."
+  },
+
+  "pipeline_notas": {
+    "1": "Onde moram todos os números do jogo. Vai receber as regras de validação do combate.",
+    "2": "O motor do combate. Recebeu 2 correções vindas do combate.",
+    "3": "Controla a partida. Ganhou a cura a cada nível. Revisão independente em andamento.",
+    "28": "Grava o progresso no celular. Já tem a decisão técnica escrita (ADR-0003).",
+    "6": "Dano, esquiva, golpes marcados no chão e peso dos golpes. O mais novo."
+  },
+  "pipeline_extras": {
+    "3": [["p", "Nova revisão rodando"]],
+    "6": [["y", "Direção criativa ok"], ["p", "Revisão independente rodando"]]
+  },
+
+  "adrs": {
+    "0001": {
+      "titulo": "Simulação determinística",
+      "resumo": "Como o combate é calculado para a mesma partida dar sempre o mesmo resultado, 30 vezes por segundo. Base de tudo.",
+      "falta": ["Testes técnicos (spikes)", "Nova revisão independente"]
+    },
+    "0002": {
+      "titulo": "Dados e balanceamento",
+      "resumo": "Como os números do jogo viram um arquivo pronto na hora de gerar o jogo, sem erro de arredondamento.",
+      "falta": ["Testar a carga no Android", "Provar que o resultado é igual em todas as plataformas"]
+    },
+    "0003": {
+      "titulo": "Save local",
+      "resumo": "Como o progresso é gravado no celular sem nunca perder o último save bom, mesmo se o app fechar no meio.",
+      "falta": ["Teste curto num <b>celular Android de verdade</b> (4 verificações)", "Os ADRs 1 e 2 aceitos antes"]
+    }
+  },
+
+  "historico": [
+    {"data": "02/11/2026", "cor": "var(--teal)", "titulo": "O começo",
+     "itens": ["Ideia do jogo, Unity 6.3 configurada e protótipo do Grimório (no navegador)."]},
+    {"data": "03/11/2026", "cor": "var(--teal)", "titulo": "Conceito congelado, arte e mapa",
+     "itens": ["Conceito do jogo revisado 6 vezes e congelado.", "Mapa com todos os sistemas e o modelo de negócio grátis (F2P) validado.", "Guia de arte (art bible) pronto, revisado 2 vezes.", "Primeiros documentos: Dados (#1) e Save (#28), mais a 1ª decisão técnica."]},
+    {"data": "04/11/2026", "cor": "var(--ember)", "titulo": "Simulação e fluxo de fase",
+     "itens": ["Simulação de combate (#2) escrita e revisada 2 vezes.", "Fluxo de fase (#3) escrito e revisado."]},
+    {"data": "05/11/2026", "cor": "var(--violet)", "titulo": "Decisões técnicas, Combate e o painel",
+     "itens": ["Ajustes da revisão do #3 aplicados; 1ª decisão técnica emendada duas vezes.", "2ª e 3ª decisões técnicas escritas (dados e save).", "Combate e dano (#6) desenhado por inteiro.", "Checagem de consistência: 2 conflitos achados e já corrigidos.", "Painel do projeto criado, com atualização automática.", "Revisões independentes do #6 e do #3 começando em outra sessão."]}
+  ],
+
+  "falta": {
+    "agora": {"titulo": "Agora", "sub": "Em andamento ou imediato", "itens": [
+      "<b>Revisão independente do Combate (#6)</b> e nova revisão do Fluxo de fase (#3), em outra sessão.",
+      "<b>Atualizar o #1</b> com as regras de validação e os valores novos do combate.",
+      "<b>Salvar o trabalho no git</b> (commit): há {git} arquivos e pastas com mudanças ainda sem commit."
+    ]},
+    "seguida": {"titulo": "Em seguida", "sub": "Ainda na fase 2 e começo da 3", "itens": [
+      "<b>Desenhar o #7 Horda, waves e inimigos</b> (o próximo da lista).",
+      "<b>Decisão técnica das colunas do combate</b> (depende do #7).",
+      "<b>Mais 13 sistemas da primeira versão</b>: #4, #5, #8, #9, #10, #12, #16, #17, #19, #20, #24, #25 e #30.",
+      "<b>Revisão cruzada</b> de todos os documentos.",
+      "<b>Revisão da arquitetura</b>, numa sessão separada.",
+      "<b>Teste no celular Android</b> (4 verificações do save e da gravação)."
+    ]},
+    "depois": {"titulo": "Depois", "sub": "Fases 3 a 7", "itens": [
+      "<b>Aceitar as 3 decisões técnicas</b> e escrever o documento de arquitetura, o manual de regras de código, acessibilidade e a base de testes.",
+      "<b>Pré-produção</b>: telas (UX), épicos, histórias e o 1º sprint.",
+      "<b>Produção</b>: programar o jogo, história por história.",
+      "<b>Polimento e lançamento</b>: desempenho, balanceamento, testes com jogadores e loja.",
+      "<b>Os outros 21 sistemas</b>: 7 do Vertical Slice, 10 do Alpha e 4 da visão completa."
+    ]}
+  },
+
+  "atencao": [
+    "O <b>celular de referência</b> (para medir desempenho) ainda não foi verificado. Sem ele não dá para aceitar as decisões técnicas.",
+    "As {adrs} decisões técnicas dependem umas das outras e das <b>revisões independentes</b>: {adrs_aceitos} aceitas até agora. Elas travam a criação das histórias.",
+    "Há <b>{git} arquivos e pastas sem commit</b>: se algo der errado no computador, o trabalho recente pode se perder."
+  ]
+}
