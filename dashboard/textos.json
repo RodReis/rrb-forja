@@ -3,7 +3,7 @@
 
   "ajuda_atualizar": "Atualiza sozinho (hook do Claude Code) e com: python dashboard/atualizar.py",
 
-  "proximo": 7,
+  "proximo": 5,
 
   "fase_resumo": {
     "1": "estamos fechando o conceito do jogo, a arte e o mapa dos sistemas.",
@@ -76,18 +76,19 @@
     "2": "O motor do combate. Recebeu 2 correções vindas do combate.",
     "3": "Controla a partida. Ganhou a cura a cada nível. Revisão independente em andamento.",
     "28": "Grava o progresso no celular. Já tem a decisão técnica escrita (ADR-0003).",
-    "6": "Dano, esquiva, golpes marcados no chão e peso dos golpes. O mais novo."
+    "6": "Dano, esquiva, golpes marcados no chão e peso dos golpes. Revisado; falta 1 critério e o re-review.",
+    "7": "Quem nasce, quando e onde, os elites e o rugido do chefe. Revisado 2 vezes."
   },
   "pipeline_extras": {
     "3": [["p", "Nova revisão rodando"]],
-    "6": [["y", "Direção criativa ok"], ["p", "Revisão independente rodando"]]
+    "6": [["y", "Direção criativa ok"], ["p", "Aguarda re-review"]]
   },
 
   "adrs": {
     "0001": {
       "titulo": "Simulação determinística",
       "resumo": "Como o combate é calculado para a mesma partida dar sempre o mesmo resultado, 30 vezes por segundo. Base de tudo.",
-      "falta": ["Testes técnicos (spikes)", "Nova revisão independente"]
+      "falta": ["Testes técnicos (spikes)", "Nova revisão independente (/architecture-review em sessão limpa)", "Aceitar a decisão (accept)"]
     },
     "0002": {
       "titulo": "Dados e balanceamento",
@@ -97,7 +98,7 @@
     "0003": {
       "titulo": "Save local",
       "resumo": "Como o progresso é gravado no celular sem nunca perder o último save bom, mesmo se o app fechar no meio.",
-      "falta": ["Teste curto num <b>celular Android de verdade</b> (4 verificações)", "Os ADRs 1 e 2 aceitos antes"]
+      "falta": ["Teste curto num <b>celular Android de verdade</b> (4 verificações)", "Os ADRs 1 e 2 aceitos antes", "Mover os arquivos de backup do Android para o lugar certo"]
     }
   },
 
@@ -108,22 +109,22 @@
      "itens": ["Conceito do jogo revisado 6 vezes e congelado.", "Mapa com todos os sistemas e o modelo de negócio grátis (F2P) validado.", "Guia de arte (art bible) pronto, revisado 2 vezes.", "Primeiros documentos: Dados (#1) e Save (#28), mais a 1ª decisão técnica."]},
     {"data": "04/11/2026", "cor": "var(--ember)", "titulo": "Simulação e fluxo de fase",
      "itens": ["Simulação de combate (#2) escrita e revisada 2 vezes.", "Fluxo de fase (#3) escrito e revisado."]},
-    {"data": "05/11/2026", "cor": "var(--violet)", "titulo": "Decisões técnicas, Combate e o painel",
-     "itens": ["Ajustes da revisão do #3 aplicados; 1ª decisão técnica emendada duas vezes.", "2ª e 3ª decisões técnicas escritas (dados e save).", "Combate e dano (#6) desenhado por inteiro.", "Checagem de consistência: 2 conflitos achados e já corrigidos.", "Painel do projeto criado, com atualização automática.", "Revisões independentes do #6 e do #3 começando em outra sessão."]}
+    {"data": "05/11/2026", "cor": "var(--violet)", "titulo": "Decisões técnicas, Combate, Horda e o painel",
+     "itens": ["Ajustes da revisão do #3 aplicados; 1ª decisão técnica emendada duas vezes.", "2ª e 3ª decisões técnicas escritas (dados e save).", "Combate e dano (#6) desenhado por inteiro.", "Checagem de consistência: 2 conflitos achados e já corrigidos.", "Painel do projeto criado, com atualização automática.", "Revisões independentes do #6 e do #3 começando em outra sessão.", "Combate (#6) revisado: 6 decisões de jogo tomadas (esquiva no limite, punição, alvo do ataque, oferta de carta, golpes aguentados, kite) e 8 bloqueios técnicos corrigidos; falta corrigir 1 critério (hash igual no PC e no celular) e o re-review.", "Horda, waves e inimigos (#7) escrito e revisado 2 vezes.", "Revisão da arquitetura (2 passadas): reprovada por enquanto. Faltam 3 decisões técnicas para combate e horda, e nenhuma das 3 decisões está aceita. 125 requisitos rastreados.", "Checagem de consistência: 1 conflito achado e corrigido (a oferta de carta do rugido do chefe abre na hora, como as outras).", "Emendas da Horda (#7) aplicadas no Combate (#6) e na Simulação (#2); 1ª decisão técnica (ADR-0001) emendada pela 3ª vez (causa de morte do rugido e sorteio da horda na preparação). Segue como proposta, sem conflito aberto no registro."]}
   ],
 
   "falta": {
     "agora": {"titulo": "Agora", "sub": "Em andamento ou imediato", "itens": [
-      "<b>Revisão independente do Combate (#6)</b> e nova revisão do Fluxo de fase (#3), em outra sessão.",
+      "<b>Corrigir 1 critério do Combate (#6)</b> (o do hash igual no PC e no celular) e fazer o re-review em sessão limpa (/clear); nova revisão do Fluxo de fase (#3).",
+      "<b>Nova revisão da arquitetura</b> em sessão limpa (/clear), já com o ADR-0001 emendado (causa de morte do rugido e sorteio da horda na preparação).",
       "<b>Atualizar o #1</b> com as regras de validação e os valores novos do combate.",
       "<b>Salvar o trabalho no git</b> (commit): há {git} arquivos e pastas com mudanças ainda sem commit."
     ]},
     "seguida": {"titulo": "Em seguida", "sub": "Ainda na fase 2 e começo da 3", "itens": [
-      "<b>Desenhar o #7 Horda, waves e inimigos</b> (o próximo da lista).",
-      "<b>Decisão técnica das colunas do combate</b> (depende do #7).",
+      "<b>3 decisões técnicas novas para combate e horda</b>: os dados de cada inimigo, o caminho do dano e dos eventos, e a geometria.",
       "<b>Mais 13 sistemas da primeira versão</b>: #4, #5, #8, #9, #10, #12, #16, #17, #19, #20, #24, #25 e #30.",
       "<b>Revisão cruzada</b> de todos os documentos.",
-      "<b>Revisão da arquitetura</b>, numa sessão separada.",
+      "<b>Nova revisão da arquitetura</b> depois das decisões novas.",
       "<b>Teste no celular Android</b> (4 verificações do save e da gravação)."
     ]},
     "depois": {"titulo": "Depois", "sub": "Fases 3 a 7", "itens": [
@@ -138,6 +139,7 @@
   "atencao": [
     "O <b>celular de referência</b> (para medir desempenho) ainda não foi verificado. Sem ele não dá para aceitar as decisões técnicas.",
     "As {adrs} decisões técnicas dependem umas das outras e das <b>revisões independentes</b>: {adrs_aceitos} aceitas até agora. Elas travam a criação das histórias.",
+    "A <b>revisão da arquitetura reprovou</b> por enquanto: combate e horda ainda não têm as decisões técnicas dos dados, do dano e da geometria.",
     "Há <b>{git} arquivos e pastas sem commit</b>: se algo der errado no computador, o trabalho recente pode se perder."
   ]
 }

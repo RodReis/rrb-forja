@@ -37,33 +37,889 @@
 #   its fields sit two columns past the dash. Quote a value that holds ": ". A
 #   line in any other shape is reported as unsupported layout, with its number.
 
-version: 1
-last_updated: ""
+version: 3
+last_updated: "2026-11-05"
 
-requirements: []
-
-# --- EXAMPLE ENTRIES (remove when first real entries are added) ---
-#
-# - id: TR-combat-001
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Player takes damage from enemies based on attack power minus defence"
-#   created: 2026-03-10
-#   revised: ""
-#   status: active
-#
-# - id: TR-combat-002
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Combo window timing is 0.4 seconds between hits"
-#   created: 2026-03-10
-#   revised: "2026-04-01"
-#   status: active
-#
-# - id: TR-combat-003
-#   system: combat
-#   gdd: design/gdd/combat-system.md
-#   requirement: "Old damage formula using raw stats"
-#   created: 2026-03-10
-#   revised: ""
-#   status: "superseded-by: TR-combat-001"
+requirements:
+- id: TR-simulacao-001
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Simulação e compositor em C# puro, asmdef sem engine, sem static mutável; uma instância por fase, sem serializar nem retomar"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-002
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Só float32; operações via SimMath, sem transcendentais, double nem Mathf; RoundToInt e FloorToInt com checagem de faixa; empate por id"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-003
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Ticks inteiros a 30 Hz; simulação sem relógio; ponte acumula dt, MaxTicksPerFrame descarta excedente, interpolação lê prev/atual"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-004
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "PCG32 com 3 streams via SplitMix64; RngWave(w) puro, sem estado, fora do hash, disponível no Preparar e no Tick; ids de stream registrados; política de IA não consome streams"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-simulacao-005
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Simulation.Create(snapshot, hashLog, seed, sistemas, estrito) confere o hash; estados Created/Running/Ended/Broken/Destroyed; erros do host sempre lançam"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-006
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Tick em 7 passos com foto de CombatActive; compacta os vivos no fim; sem hash, relógio nem alocação; não reentrante, só na thread principal"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-007
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Command (ActorId, Kind, X, Y, ArgA, ArgB), validação e ordem por ator/tipo; vale só no tick; serial do PickOffer validado pelo #16"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-008
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Compositor único fixa a ordem dos sistemas para jogo e teste sem tela; dentro do tick, comunicação só pelo SimWorld"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-009
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "SimWorld SoA pré-alocado, id = índice sem reuso, capacidade = total de spawns, Spawn devolve -1, Kill único caminho; FS9 em long no compositor"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-010
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "EventBuffer só de saída, drenado após cada tick; descarta os novos, com EventosReservados e DroppedEvents; não muda o hash"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-011
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "CombatHold escrito só pelo #16 e hasheado; CombatTick só avança com o combate ativo"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-012
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Checagem de finitude no passo 6, marca Essencial, FalhaInterna > vitória > derrota; NaN regrava posição anterior e HP 0"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-013
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Modo estrito por instância; contadores de diagnóstico, inclusive GolpesDescartados, ModForaDeFaixa e CurasDescartadas do #6, lançam no 1º caso em estrito; GolpesLimitados só conta"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-simulacao-014
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Hash FNV-1a 64 por byte, fora do Tick; reprodutibilidade só no mesmo binário e ABI; goldens por runtime"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-015
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Ponte entrega Mover em todo tick do frame e ações discretas 1x; segura a ação em frame de 0 ticks; zera Mover até um toque novo"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-016
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Pausa, segundo plano e foco: zero Tick, acum zerado, 1º dt descartado, portão do joystick só com CombatHold = 0; callbacks na thread principal"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-simulacao-017
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Cabeçalho do log: seed antes do tick 0, hash dos dados, tag do build (IL2CPP), ABI e ordem dos sistemas; comparador 'não comparável'"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-018
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Orçamentos no aparelho: p95 do Tick (X1), memória (X3), N vivos sem tick descartado, custo do hash (X6), zero alocação, buffer de eventos cobre o pior tick sem DroppedEvents (P6)"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-simulacao-019
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Analisador estático bane double, Mathf e System.Random; CI exige testcasecount > 0"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-020
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Validação entre aparelhos (replay por servidor #22, online #29, coop #35) exige simulação em ponto fixo"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-021
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Fora do Tick só no Preparar: Spawn do herói sem evento e RngWave do #7; o compositor chama IPreparaFase e IConcluiFase"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-simulacao-022
+  system: simulacao
+  gdd: design/gdd/simulacao-deterministica.md
+  requirement: "Fim com motivo e detalhe (MissingBoss pelo #3, EssentialSpawnRejected pelo #2 no tick); dado inválido não é pedido de fim"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-001
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Duas metades: SistemaFluxoDeFase (ISimSystem, entre #6 e #16) e TentativaDeFase fora do tick e do hash, uma por tentativa"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-002
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Ficha de fase no SimWorld, escrita só pelo #3, hasheada pelo Hash do #3, gravada inteira no Preparar, com MotivoFim"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-003
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "IPreparaFase e IConcluiFase chamadas pelo compositor, Concluir em toda causa; eventos nunca são canal; #3 não conhece o #16"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-004
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Herói criado no Preparar por Spawn essencial sem evento, IdDoHeroi = 0, ids_de_preparacao = 1 conferido antes do Create"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-005
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Varredura incremental dos ids novos e lista de mortos do tick com id, facção, causa e xpDaMorte, limpa em todo tick"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-006
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Fim avaliado num só ponto via RequestEnd com prioridade; PendingEnd faz pular XP e oferta; End/EndDetail traduzidos em causa"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-007
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Relógio da fase é o CombatTick; #3 inerte com CombatActive falso; somas da F4 em long"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-008
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "XP e nível em int com intermediários em long, sem divisão; passo O(1) + O(mortes), sem alocação"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-009
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "PhaseResult readonly struct (causa, nível, ChefeVisto, MorteSimultanea, hash, attemptId de 128 bits); ContaComoMorteDeFase função pura"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-010
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Encerramento: drenar, StateHash (indisponível em Broken), Concluir, Discard, commit de fim, evento ao #5 após a resposta"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-011
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "BeginStage assíncrono com resultado real, attemptId e requestId de fonte única; resposta filtrada por requestId; CancelStage não grava"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-012
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Thread única: respostas do #28 numa fila esvaziada entre frames, nunca dentro do Tick, sem continuação em outra thread"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-013
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Marca encontrada no boot: o #3 devolve o efeito, gravado no mesmo commit do consumo; Entrar bloqueado até o callback"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-014
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Conjunto de motivos de pausa (foco, segundo plano, ligação, diálogo); 1º dt descartado também após a carga; nasce Pausada; pausa não grava"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-015
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Fontes injetadas: ISeedSource (seed nova por tentativa, override em teste) e fonte de ids; nenhuma leitura de relógio nem System.Random"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-016
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Log do #3: seed antes do tick 0, hash final, causa, MorteSimultanea, abandonada, exceção, commit falhou, ordem dos Preparar"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-017
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Abandono confirmado entre ticks, sem Tick: hash marcado abandonada, depois Concluir, depois Discard"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-018
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Knobs validados no Preparar por exceção (DadosInvalidos); Create ou Preparar que lança leva a FalhaInterna com hash indisponível"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-019
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Checagens de setup no build: limiar <= 2^31-1, F5 nas duas pontas de XP, exatamente 1 Essencial, cronograma com chefe"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-fluxo-020
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "Registro no Grimório depois do fim, como 2º commit fora da simulação"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-001
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Valores de gameplay só como dado externo, números escritos como texto e lidos em decimal com cultura invariante; nenhum literal no código"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-002
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Declaração de knob com dono, tipo, unidade, faixa, padrão, aceite, pior, sentido, remoto, validada por coerência (F6)"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-003
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "IDs estáveis em snake_case, nunca reutilizados nem removidos, deprecated resolve; índice inteiro pela ordem ordinal"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-004
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Resolução de ID para definição fora do tick, com a resposta ID desconhecido para o save e o log"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-005
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Conversão única no build: floor(s*30+0,5) com recusa abaixo de 1 tick; taxa /30 em decimal para float, bits idênticos em todas as plataformas"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-006
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Um único DataValidator, tudo ou nada, sem clamp, seis checagens, relatório com todos os erros"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-007
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "A carga verifica estrutura e hash; uma falha bloqueia a fase (o catálogo bloqueia todas) e nunca usa valor padrão"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-008
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Capacidades por fase (vivos, ids, eventos, pools) contra a demanda com margem e teto por tipo, em int64; compositor soma ids_de_preparacao"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-009
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Snapshot binário imutável, canônico e little-endian, lido sem reflexão; o jogo e o headless leem o mesmo"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-010
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Carga síncrona (catálogo no boot, fase antes do tick 0), zero I/O e conversão durante a fase, sem Addressables nem Resources"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-011
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Orçamento de carga fria e quente e memória do snapshot no aparelho de referência"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-012
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Hash FNV-1a 64 de conteúdo, rótulo e versão efetiva (embarcado + pacote) para o log #5 e Simulation.Create"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-013
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Revisão por skill (fecho mais contador), classificação autoral obrigatória, histórico datado, só fatos expostos"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-014
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "O pré-build revalida, refaz o bake e falha o build com dado inválido ou knob de aceite remoto; o snapshot fica versionado"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-015
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Assembly Forja.Data sem engine, sem rede, sem static mutável e sem API de escrita em runtime"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-016
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Análise estática no CI: literais numéricos de gameplay e lista de exceções"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-017
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Contrato do pacote remoto: lista branca, atômico, mesma validação, sem segmentação, base = hash, maior sequência, só entre partidas"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-018
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Persistência atômica da última sobrescrita válida, assinatura, expiração, revalidação no boot, decimal idêntico no aparelho"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-019
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Histórico de revisão do aparelho (pacote aplicado, trocado, removido, expirado, descartado) persistido e somado ao History"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-020
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Aplicar o pacote só no hub, sem ritual de selo ou registro aberto (sinal do #17); tela das cartas lê a versão da próxima partida"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-001
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Um save por aparelho; envelope com fatias opacas versionadas pelo dono; tag e campo desconhecidos passam intactos"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-002
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "O save guarda só IDs, carimbo da versão dos dados, revisão e data do selo, saveSequence e maxSeenUtc; nunca valores nem posses"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-003
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Cabeçalho fixo com checksum próprio, lido antes do corpo; cabeçalho inválido é corrupção; FNV-1a 64 no corpo"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-004
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Commit atômico: temporário, releitura, rotação verificada do backup, troca do principal, fsync do diretório antes de Confirmado"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-005
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Estados de abertura (8), precedência por saveSequence, quarentena e pendente de decisão, leitura incerta com até 3 tentativas"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-006
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Versão do formato inteira; migração só estrutural, numa cópia em memória; formato mais novo e migração falhou abrem só leitura"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-007
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Retrato montado na thread principal no orçamento F3; gravador único em thread própria; fila de capacidade 1 com substituição"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-008
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Pontos seguros, flag de sujo, nunca grava na fase nem no tick; pausa por OnApplicationPause com flush e teto"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-009
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Marca de fase em andamento: BeginStage só retorna com resultado real; attemptId de 128 bits de fonte injetada; payload opaco; CancelStage"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-010
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Avisar o #3 de marca encontrada e gravar o efeito do #3 no commit de consumo; restaurada consumida na restauração"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-011
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Resultado real Pendente, Confirmado ou Falhou com causa tipada, sem tempo esgotado; selo idempotente; recusa em só leitura"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-012
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Relógio injetável; hora efetiva monotônica na faixa de sanidade sobre BUILD_UTC; o avanço viaja no próximo commit"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-013
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Android: raiz interna por JNI getFilesDir(); Auto Backup só do save.dat; marcador em noBackupFilesDir para detectar restauração"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-014
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Armazenamento injetável com injeção de falha; o mesmo teste roda contra o fake e contra o adaptador real"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-015
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Serialização à mão, sem reflexão; serviço injetado sem static mutável; ciclo de vida da thread (quitting, Play Mode)"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-016
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Interface de eventos para o #5 com sink nulo e buffer no boot, com a lista de eventos fixada"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-017
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Pedidos de mensagem ao jogador (7 tipos), uma por vez por gravidade, consumidos no commit; indicador persistente"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-018
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Tratar ID desconhecido do #1: preservar o registro, slot indisponível; revisão do selo comparável ao histórico"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-save-019
+  system: save
+  gdd: design/gdd/save-local.md
+  requirement: "Exportar e importar o retrato inteiro; detectar regressão por saveSequence e hash de conteúdo; só o #29 reduz maxSeenUtc"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-001
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Colunas hasheadas do #6 no SimWorld: hpMax, estadoCombate, timerTicks, iframes, contactCd, kbVel, intentVel, classe, arquetipoId, tickNascimento, aberto, punidoPesado, esquivaBuf, curaPendente, ultimoContatoTick, área travada do telegraph, prontoDesde, índice do ciclo do chefe, proximoHitStopTick, ultimaDirecao, poise, kb_refrat; escalares modDano e modCadencia do #8"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-combate-002
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "O #6 é o único escritor de posição e HP; o #7 só faz Spawn, o #8 só enfileira; um espião por sistema verifica"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-003
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Ordem fixa no tick #7, #8, #6, #3; dentro do #6 os passos 1 a 8 têm ordem fixa"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-004
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "O #6 só age com CombatActive, conta todo tempo em CombatTick e as contagens regressivas congelam exatas; a oferta de carta abre na hora e o #16 é dono da contagem 3-2-1 sob CombatHold, sem predicado do #6"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-combate-005
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Ponto único Combate.Aplicar/Curar com fila entre sistemas, pedido Rugido tipado na frente da fila e sem F1, cura do #3 via curaPendente (sobrevive ao CombatHold), resolução 7a/7b, scratch fora do hash, cap_fila com teto_vivos_horda + 1, estouro vira Quebrada"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-combate-006
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Morte só por Kill(id, causa) em 7b; herói e chefe podem morrer no mesmo tick; a causa identifica o golpe ou a fonte"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-007
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Eventos individuais só para herói, elite e chefe; a horda sai agregada por tick {mortes, acertos, danoTotal}; mortes por Rugido somam em mortes, acertos e danoTotal contam só pedidos com valor"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-combate-008
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Contadores de diagnóstico fora do hash (GolpesDescartados, GolpesLimitados, ModForaDeFaixa, CurasDescartadas) que lançam no modo estrito"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-009
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "float32 na ordem escrita, sem FMA, SimMath, HP_RESIDUO contra resíduo de float, conversão float para int controlada"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-010
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Tipo vetorial próprio e geometria determinística: círculo, cone, segmento da linha (P0→P1 limitado na trava), clampArena AABB por eixo, EIXOS8[id mod 8] para vetor nulo do knockback, dir (1,0) se d² < 1e-6, sem trigonometria"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-combate-011
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Consulta espacial por tick com 300+ vivos: alvo mais próximo, contato, acerto do telegraph e áreas do #8; sem bloqueio de corpo"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-012
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Orçamento do Tick do #6: p95 ≤ 2,0 ms e p99 ≤ 4,0 ms com 300+ vivos e 3 avisos, no aparelho de referência; pior tick (300 mortes + 3 avisos) com máximo ≤ orcamento_combate_pior_tick_ms (valor ainda não definido)"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-combate-013
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Zero alocação gerenciada por tick, arrays pré-alocados, 300 mortes num tick"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-014
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Laços por id crescente, empate pelo menor id, sem RNG, Hash do #6 com escopo definido; proibições verificadas por BannedApiAnalyzers"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-combate-015
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Durações em ticks inteiros; segundos e taxas convertidos uma vez no build; validações F5-F10 em decimal pelo #1"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-016
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "AvisoPerto como sinal somente leitura do #6 para o #16, que segura a oferta"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: "superseded-by: TR-combate-004"
+- id: TR-combate-017
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Hit-stop, flash, dissolve e cauda são só apresentação; a simulação nunca congela e a apresentação lê colunas e eventos"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-018
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Efeitos por shader com propriedade por instância, pools de cartões e fantasmas, overdraw <= 2,5x, decal de telegraph, cortes por prioridade"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-019
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Háptico no Android e tremor de câmera como knobs de acessibilidade"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-020
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "StateHash do tick 900 igual entre o Editor e o aparelho IL2CPP ARM64"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-021
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Capacidade de eventos ≥ Reservados + 5 + 3×individuais + 4; DeathsThisTick com a capacidade de entidades, sem descarte"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-022
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "O #6 expõe visões somente leitura: área travada do telegraph (fase, ticks_ate_dano, forma, raio, origem e destino), ultimoDanoTick, pesado, iframes, dash, cadência, HP e hpMax; posição, arquétipo e tick da horda morta legíveis 1 tick após a morte"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-combate-023
+  system: combate
+  gdd: design/gdd/combate-e-dano.md
+  requirement: "Spawn grava classe, arquetipoId e tickNascimento; a entidade nascida no CombatTick corrente não age no #6"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-001
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "O #7 é o 1º ISimSystem (#7, #8, #6, #3, #16), só faz Spawn e declara dados; depois do nascimento não escreve posição nem HP"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-002
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Composição inteira no Preparar via world.RngWave(w), sorteio sem viés; 0 sorteios por tick"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-003
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Tabela (chave long, sem comparador genérico sobre struct), janelas por elite e scratch da F4 pré-alocados; fora do hash; só cursores hasheados; zero alocação por tick"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-004
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Posição de nascimento como função pura: direções SimVec2 literais, espelho por eixo, dist², sem sin/cos nem raiz"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-005
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Geometria da arena AABB [0,L]x[0,A] e tipo vetorial compartilhados com o clampArena do #6"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-006
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "vivos_horda e 'há elite vivo' por uma passada local O(n≤303) sobre Alive; nenhum contador no SimWorld"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-007
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Colunas classe, arquetipoId e tickNascimento escritas no Spawn; a escolta lê o estado de ataque do #6 do tick anterior"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-008
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Capacidades vêm dos dados: total_spawns_7 (FS9) e pico_vivos_7 (F3); Spawn -1 faz o cursor avançar, ou lança no modo estrito"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-009
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Chefe Essencial: único, nunca espera; Spawn rejeitado encerra com EssentialSpawnRejected; reservar um id para o essencial?"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-010
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Rugido: pedido tipado, sem dano, na frente da fila Combate.Aplicar; Kill com causa Rugido, a primeira causa vence; cap_fila ≥ teto_vivos_horda + 1"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-011
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Movimento cinemático em C# puro: linha reta, sem NavMesh nem física, mira por id mod 32, encaixe no alvo sem normalizar"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-012
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Separação entre inimigos e bloqueio de corpo (grade uniforme O(n)) adiados ao spike de performance"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-013
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Orçamento do passo do #7: p95 0,3 ms e p99 0,5 ms com 300 vivos e 200 pendentes, no tick do rugido, na escolta e com 20 nascimentos/tick sustentados; marker Horda.Tick"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-014
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Render de multidão: <= 400 triângulos, 1 LOD, 1 draw por tipo, dados por instância, zero efeito ou som por corpo, pool de ~300 fantasmas"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-015
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Pré-aquecer no Preparar os assets do chefe (modelo, shader, LUT por Volume, disco) para o tick do rugido caber no frame"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-016
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Evento Rugido (mesmo com 0 corpos); nenhum evento por corpo nascido"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-017
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Diagnósticos do #7 (HordaEsperouTicks, EliteEsperouTicks, HordaCancelada, ElitesCancelados, TicksNoTeto, VivosHordaNoElite, TicksNoCanto) fora do hash, enviados ao log do #5"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-018
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Cronograma e arquétipos na seção de fase do snapshot: w explícito, ordem (inicio, w), instante 0 válido, checagens F2/F5/F10 em decimal"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-019
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Congela sem CombatActive; corpos vencem no mesmo CombatTick depois da oferta, sem lote na retomada"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-020
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Mesmo build IL2CPP ARM64: tabela e hash iguais; golden por plataforma"
+  created: 2026-11-05
+  revised: 2026-11-05
+  status: active
+- id: TR-horda-021
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Id de classe de vetor pré-calculado em decimal no build; frentes comparadas por inteiro, nunca por float"
+  created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-horda-022
+  system: horda
+  gdd: design/gdd/horda-waves-e-inimigos.md
+  requirement: "Tick do rugido: até teto_vivos_horda + 1 mortes mais o evento Rugido sem DroppedEvents"
+  created: 2026-11-05
+  revised: ""
+  status: active

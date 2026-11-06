@@ -2,7 +2,7 @@
 
 > **Status**: Draft
 > **Created**: 2026-11-03
-> **Last Updated**: 2026-11-03
+> **Last Updated**: 2026-11-04
 > **Source Concept**: design/gdd/game-concept.md (congelado; o histórico de revisões está em design/gdd/reviews/game-concept-review-log.md)
 
 ---
@@ -111,22 +111,22 @@ Legenda: `#n` na coluna Depends On aponta para o número desta tabela. "(inferre
 
 | # | System Name | Category | Priority | Status | Design Doc | Depends On |
 |---|-------------|----------|----------|--------|------------|------------|
-| 1 | Dados e balanceamento | Core | MVP | In Review | [dados-e-balanceamento.md](dados-e-balanceamento.md) | — |
-| 2 | Simulação de combate determinística | Core | MVP | Not Started | — | 1 |
-| 3 | Fluxo de fase (inferred) | Core | MVP | Not Started | — | 1, 2, 28 |
-| 4 | Input e câmera de combate | Core | MVP | Not Started | — | 3 |
-| 5 | Log de eventos e instrumentação de aceite | Core | MVP | Not Started | — | 1, 2, 28 |
-| 6 | Combate e dano | Gameplay | MVP | Not Started | — | 1, 2 |
-| 7 | Horda, waves e inimigos | Gameplay | MVP | Not Started | — | 1, 2, 6 |
-| 8 | Skills e evoluções | Gameplay | MVP | Not Started | — | 1, 6, 10 |
+| 1 | Dados e balanceamento | Core | MVP | Needs Revision | [dados-e-balanceamento.md](dados-e-balanceamento.md) | — |
+| 2 | Simulação de combate determinística | Core | MVP | Needs Revision | [simulacao-deterministica.md](simulacao-deterministica.md) | 1 |
+| 3 | Fluxo de fase (inferred) | Core | MVP | Needs Revision | [fluxo-de-fase.md](fluxo-de-fase.md) | 1, 2, 6, 7 (interface), 28 |
+| 4 | Input e câmera de combate | Core | MVP | Not Started | — | 2, 3 |
+| 5 | Log de eventos e instrumentação de aceite | Core | MVP | Not Started | — | 1, 2, 3 (leitura), 28 |
+| 6 | Combate e dano | Gameplay | MVP | Needs Revision | [combate-e-dano.md](combate-e-dano.md) | 1, 2 |
+| 7 | Horda, waves e inimigos | Gameplay | MVP | In Review | [horda-waves-e-inimigos.md](horda-waves-e-inimigos.md) | 1, 2, 6 |
+| 8 | Skills e evoluções | Gameplay | MVP | Not Started | — | 1, 2, 6, 10 |
 | 9 | Oferta de cartas no level-up | Gameplay | MVP | Not Started | — | 2, 3, 8, 10, 16 (leitura) |
 | 10 | Funções | Gameplay | MVP | Not Started | — | 1, 6 |
 | 11 | Raças | Gameplay | Vertical Slice | Not Started | — | 6, 8 (no MVP: stub do Orc em 1) |
-| 12 | Feedback de combate, VFX e HUD | Gameplay | MVP | Not Started | — | 6, 7, 10 |
+| 12 | Feedback de combate, VFX e HUD | Gameplay | MVP | Not Started | — | 2, 3 (leitura), 6, 7, 10 |
 | 13 | IA de herói e companheiro (inferred) | Gameplay | Vertical Slice | Not Started | — | 2, 6, 10, 17 |
 | 14 | Dungeons e trindade | Gameplay | Vertical Slice | Not Started | — | 6, 7, 13, 17, 19, 21 |
 | 15 | Varredura | Gameplay | Alpha | Not Started | — | 17, 20, 24, 26 |
-| 16 | Grimório | Progression | MVP | Not Started | — | 1, 3, 5, 8, 10, 19, 28 |
+| 16 | Grimório | Progression | MVP | Not Started | — | 1, 2, 3, 5, 6, 8, 10, 19, 28 |
 | 17 | Selamento da build | Progression | MVP | Not Started | — | 1, 8, 16, 19, 28 |
 | 18 | Reforja | Progression | Alpha | Not Started | — | 1, 8, 9, 17, 26 |
 | 19 | Herói: criação, nível e roster | Progression | MVP | Not Started | — | 10, 11 (no MVP: stub), 28 |
@@ -210,17 +210,17 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 ### Core Layer (depends on foundation)
 
 1. **#2 Simulação determinística** — depends on: 1
-2. **#3 Fluxo de fase** — depends on: 2, 28
-3. **#5 Log de eventos** — depends on: 2, 28
+2. **#3 Fluxo de fase** — depends on: 1, 2, 6, 7 (interface: o #3 define a leitura e o #7 a cumpre, sem ciclo; o #7 é Feature), 28
+3. **#5 Log de eventos** — depends on: 1, 2, 3 (leitura), 28
 4. **#6 Combate e dano** — depends on: 1, 2
 
 ### Feature Layer (depends on core)
 
 1. **#10 Funções** — depends on: 1, 6
-2. **#8 Skills e evoluções** — depends on: 6, 10
+2. **#8 Skills e evoluções** — depends on: 2, 6, 10
 3. **#7 Horda, waves e inimigos** — depends on: 1, 2, 6
 4. **#19 Herói** — depends on: 10, 11 (stub no MVP), 28
-5. **#16 Grimório** — depends on: 3, 5, 8, 10, 19, 28
+5. **#16 Grimório** — depends on: 2, 3, 5, 6, 8, 10, 19, 28
 6. **#17 Selamento da build** — depends on: 8, 16, 19, 28
 7. **#9 Oferta de cartas** — depends on: 2, 3, 8, 10, 16 (só leitura)
 8. **#20 Campanha e capítulos** — depends on: 3, 7, 11 (stub no MVP)
@@ -241,8 +241,8 @@ Sistemas em ordem de dependência: projete e construa de cima para baixo.
 
 ### Presentation Layer (depends on features)
 
-1. **#12 Feedback de combate, VFX e HUD** — depends on: 6, 7, 10
-2. **#4 Input e câmera de combate** — depends on: 3
+1. **#12 Feedback de combate, VFX e HUD** — depends on: 2, 3 (leitura), 6, 7, 10
+2. **#4 Input e câmera de combate** — depends on: 2, 3
 3. **#30 UI de meta-jogo** — depends on: 16, 17, 19, 24, 25
 4. **#31 Áudio** — depends on: 6, 10, 11, 17
 
@@ -366,10 +366,10 @@ Dois acoplamentos de dependência que **não** são ciclos e devem ficar assim: 
 | Metric | Count |
 |--------|-------|
 | Total systems identified | 40 |
-| Design docs started | 2 |
+| Design docs started | 6 |
 | Design docs reviewed | 0 |
 | Design docs approved | 0 |
-| MVP systems designed | 2/19 |
+| MVP systems designed | 6/19 |
 | Vertical Slice systems designed | 0/7 |
 
 ---

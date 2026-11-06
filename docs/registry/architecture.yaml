@@ -40,7 +40,7 @@
 #   unsupported layout, with its number.
 
 version: 1
-last_updated: "2026-11-03"
+last_updated: "2026-11-05"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -59,10 +59,68 @@ state_ownership:
     owner_system: sim-world
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     interface: "SimWorld (Forja.Simulation): id, posicao atual e do tick anterior, faccao, HP e vivo; ids monotonicos por fase, nunca reutilizados; colunas extras so por ADR de #6 e #7"
-    write_access: isimsystem-within-tick-only
+    write_access: "isimsystem-within-tick; plus the Spawn made by IPreparaFase.Preparar in state Created (whole row with hp and position, essential flag, no event)"
     referenced_by:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     added: 2026-11-03
+    revised: 2026-11-05
+    # was (ADR-0001 amendments, 2026-11-05): write_access "isimsystem-within-tick-only"; the #3 now creates the hero in Preparar, before tick 0 (GDD #3 rule 3.4)
+  - state: combat_hold
+    status: active
+    owner_system: grimorio-16
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    interface: "SimWorld.CombatHold (int: 0 free, 1 offer pending, 2 waiting resume); read by the Core to take the CombatActive snapshot at the start of each tick; included in the SimWorld hash"
+    write_access: "grimorio-16-only, inside the Tick only; the setter throws in every other state"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/fluxo-de-fase.md
+    added: 2026-11-05
+    revised: ""
+  - state: phase_sheet
+    status: active
+    owner_system: fluxo-de-fase-3
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    interface: "SimWorld.Phase (ref readonly PhaseSheet, read by every system); PhaseForWrite() for the #3 only; scalars: state, level, xp, levels gained (only grows), boss seen and beaten, simultaneous death, hero and boss ids, next id to see, enemy essentials alive, end request; hashed by the #3 own Hash"
+    write_access: "fluxo-de-fase-3-only; PhaseForWrite is accepted in state Created (Preparar) or inside the Tick"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-05
+    revised: ""
+  - state: game_data_snapshot
+    status: active
+    owner_system: dados-1
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    interface: "PhaseSnapshot (Forja.Data), immutable once loaded: private int[] and float[] decoded once, exposed only as ReadOnlySpan; IDataVersion for hash, label and skill revisions"
+    write_access: "none at runtime; the baker writes the snapshot file in the editor only, and only when the bytes changed"
+    referenced_by:
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+      - design/gdd/dados-e-balanceamento.md
+    added: 2026-11-05
+    revised: ""
+  - state: save_files
+    status: active
+    owner_system: save-local-28
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    interface: "Save/save.dat, save.bak, save.tmp, save.bak.tmp and the q-* quarantine files under the save root (Android: JNI getFilesDir()); every access goes through ISaveStorage"
+    write_access: "only the single writer thread of the SaveService, through ISaveStorage; no other code opens, writes or deletes these files"
+    referenced_by:
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+      - design/gdd/save-local.md
+    added: 2026-11-05
+    revised: ""
+  - state: effective_utc
+    status: active
+    owner_system: save-local-28
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    interface: "ISaveService.EffectiveUtcMs (long, milliseconds), the effective time of GDD #28 F1; only grows; read by the #26 and the #17 for the seal date"
+    write_access: "only the SaveService, from ISaveClock and the saved maxSeenUtc; consumers read it and never write"
+    referenced_by:
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+      - design/gdd/save-local.md
+    added: 2026-11-05
     revised: ""
 
 # Example:
@@ -112,10 +170,122 @@ interfaces:
       - presentation
       - event-log
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
-    signal_signature: "Simulation.Events (ReadOnlySpan<SimEvent>, output only, valid until next Tick, drained after every Tick; Simulation.DroppedEvents never silent)"
+    signal_signature: "Simulation.Events (ReadOnlySpan<SimEvent>, output only, no side effect, valid until next Tick) and Simulation.DrainEvents() (returns the events of the last Tick and marks the buffer drained; call after every Tick); Simulation.DroppedEvents never silent"
     referenced_by:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     added: 2026-11-03
+    revised: 2026-11-05
+    # was (ADR-0001 amendments, 2026-11-05): signal_signature "Simulation.Events (ReadOnlySpan<SimEvent>, output only, valid until next Tick, drained after every Tick; Simulation.DroppedEvents never silent)"; DrainEvents() added so that an undrained buffer is detectable
+  - contract: phase_lifecycle
+    status: active
+    pattern: direct_call
+    producer: compositor
+    consumers:
+      - fluxo-de-fase-3
+      - grimorio-16
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    signal_signature: "IPreparaFase.Preparar(SimWorld) after Create and before the first Tick; IConcluiFase.Concluir(in PhaseResult) after the last Tick (or abandon, Preparar failure, Broken) and before Discard, on every cause; typed lists built by direct reference, no reflection"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - design/gdd/fluxo-de-fase.md
+    added: 2026-11-05
+    revised: ""
+  - contract: sim_create
+    status: active
+    pattern: direct_call
+    producer: host-via-compositor
+    consumers:
+      - simulation
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    signal_signature: "Simulation.Create(IPhaseSnapshot snapshot, ulong logHeaderDataHash, ulong masterSeed, ISimSystem[] systemsInExecutionOrder, bool strict); static factory with no static field; throws if the snapshot hash differs from the log header hash"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-05
+    revised: ""
+  - contract: phase_snapshot
+    status: active
+    pattern: direct_call
+    producer: data-loader
+    consumers:
+      - simulation
+      - sim-systems
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    signal_signature: "PhaseSnapshot : IPhaseSnapshot (EntityCapacity, AliveCapacity, EventCapacity, ContentHash; SectionInts(sectionId) and SectionFloats(sectionId) as ReadOnlySpan); read before tick 0, never during the phase"
+    referenced_by:
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-05
+    revised: ""
+  - contract: data_version
+    status: active
+    pattern: direct_call
+    producer: dados-1
+    consumers:
+      - reforja-18
+      - save-local-28
+      - event-log-5
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    signal_signature: "IDataVersion (Hash, Label, Revision(skillIndex), History(skillIndex)); facts only, the free-reforge rule belongs to the #18"
+    referenced_by:
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    added: 2026-11-05
+    revised: ""
+  - contract: data_override_provider
+    status: active
+    pattern: direct_call
+    producer: servicos-online-29
+    consumers:
+      - dados-1
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    signal_signature: "IDataOverrideProvider.TryGetPending(out ReadOnlyMemory<byte> rawPackage); injected by the #29, the #1 validates and decides and never waits for the network; transport, signature, expiry and persistence belong to the #29 ADR"
+    referenced_by:
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    added: 2026-11-05
+    revised: ""
+  - contract: save_service
+    status: active
+    pattern: direct_call
+    producer: save-local-28
+    consumers:
+      - fluxo-de-fase-3
+      - grimorio-16
+      - selo-17
+      - heroi-19
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    signal_signature: "ISaveService on the main thread: RequestCommit(requestId, kind, in snapshot), BeginStage(requestId, in mark), CancelStage(requestId), ConsumeMark(in answer), TryDequeueResult(out CommitResult) read between frames; the requestId comes from one shared injected source used by all callers (#3, #17), unique across them; CommitResult carries RequestId, AttemptId (128 bits, compared by equality only, from an injected source), Outcome (Pending, Confirmed, Failed, never a timeout); a replaced request still gets its own result; on replacement the backup rotation follows the strongest kind (Seal) and the stage mark follows the last request, so CancelStage never writes the mark; Confirmed only after FsyncDirectory"
+    referenced_by:
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+      - design/gdd/save-local.md
+      - design/gdd/fluxo-de-fase.md
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (ADR-0003 revision, 2026-11-05): signal_signature "...the caller passes the requestId, CommitResult carries RequestId, AttemptId, Outcome (Pending, Confirmed, Failed, never a timeout); a replaced request still gets its own result; Confirmed only after FsyncDirectory"; referenced_by without design/gdd/fluxo-de-fase.md
+  - contract: save_storage
+    status: active
+    pattern: direct_call
+    producer: android-storage
+    consumers:
+      - save-local-28
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    signal_signature: "ISaveStorage (PersistentRoot, WriteAll with flush, TryReadAll and TryList returning Ok, NotFound or IoError, Exists, Replace atomic, MoveNoOverwrite, Delete, FsyncDirectory); Android implementation lives in Forja.Gameplay, an in-memory one with fault injection in the tests"
+    referenced_by:
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    added: 2026-11-05
+    revised: ""
+  - contract: save_events
+    status: active
+    pattern: direct_call
+    producer: save-local-28
+    consumers:
+      - event-log-5
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    signal_signature: "ISaveEventSink.Emit(in SaveEvent); null sink by default and a buffer for events raised at boot before the #5 subscribes"
+    referenced_by:
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+      - design/gdd/save-local.md
+    added: 2026-11-05
     revised: ""
 
 # Example:
@@ -179,33 +349,127 @@ performance_budgets: []
 api_decisions:
   - purpose: sim_random
     status: active
-    api: "Pcg32 (Forja.Simulation), one instance per RngStream, seed SplitMix64(masterSeed ^ streamId)"
+    api: "Pcg32 (Forja.Simulation), one instance per RngStream, seed SplitMix64(masterSeed ^ streamId); ctx.RngWave(w) derives the per-wave generator: base = Mix(masterSeed XOR 0), seed_w = Mix(base XOR w), Pcg32(seed_w, seq = w), stored in a local variable (mutable struct)"
     not: "UnityEngine.Random, System.Random"
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     reason: "Seeded independent streams (Spawn, Offer, Loot) reproducible in the same build; Unity and System RNG are not controllable or portable"
     referenced_by:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     added: 2026-11-03
-    revised: ""
+    revised: 2026-11-05
+    # was (ADR-0001 amendments, 2026-11-05): api "Pcg32 (Forja.Simulation), one instance per RngStream, seed SplitMix64(masterSeed ^ streamId)"; RngWave(w) added per GDD #2 FS6
   - purpose: sim_numeric_type
     status: active
     api: "float (System.Single) with all non-basic math through SimMath; no transcendental functions in simulation state"
-    not: "double, decimal, Unity.Mathematics, UnityEngine.Mathf, Vector3"
+    not: "double, decimal in the simulation state (decimal is allowed in Forja.Data, for validation at build, in the editor and for remote packages), Unity.Mathematics, UnityEngine.Mathf, Vector3"
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     reason: "Same-build determinism at the lowest formula cost for the MVP; fixed point is the registered replacement if #22 or #40 need cross-device verification"
     referenced_by:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     added: 2026-11-03
-    revised: ""
+    revised: 2026-11-05
+    # was (ADR-0002, 2026-11-05): not "double, decimal, Unity.Mathematics, UnityEngine.Mathf, Vector3"; the ban on decimal applies only to the simulation state
   - purpose: sim_time
     status: active
-    api: "SimClock.TicksPerSecond = 30, simulation works in integer ticks; data authored in seconds, converted at load by round-to-nearest with a 1 tick minimum"
+    api: "SimClock.TicksPerSecond = 30, simulation works in integer ticks; data authored in seconds, converted once at build in Forja.Data: duration floor(s * 30 + 0.5) and rejected below 1 tick, rate by second divided in decimal (r / 30) and converted once to float by the own integer-only routine; the baked ticks and float bits are read by the simulation, which never converts"
     not: "Time.deltaTime, Time.time, wall clock"
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     reason: "Result depends only on seed and per-tick commands, never on frame timing"
     referenced_by:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
     added: 2026-11-03
+    revised: 2026-11-05
+    # was (ADR-0002, 2026-11-05): api "... data authored in seconds, converted at load by round-to-nearest with a 1 tick minimum"; the conversion moved from the load to the build and rates are now divided in decimal instead of multiplied by SimClock.TickSeconds (ADR-0001 amended)
+  - purpose: data_authoring_format
+    status: active
+    api: "JSON in Assets/GameData/ with every number written as text, read by an own tokenizer in Forja.Data into decimal with CultureInfo.InvariantCulture and NumberStyles.AllowLeadingSign | AllowDecimalPoint (no exponent)"
+    not: "JsonUtility, ScriptableObject, plain JSON numbers, a third-party JSON package without technical-director approval"
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    reason: "The authored value must never pass through float or double before validation (GDD #1); text keeps the value exact and diffable in git"
+    referenced_by:
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+      - design/gdd/dados-e-balanceamento.md
+    added: 2026-11-05
+    revised: ""
+  - purpose: data_decimal_to_float
+    status: active
+    api: "Own integer-only routine DecimalToFloat in Forja.Data (decimal.GetBits, round to nearest even, no double): the single decimal to float conversion, done in the baker; the bits are stored in the snapshot"
+    not: "(float)decimal, Convert.ToSingle, double, a conversion at runtime on embedded data"
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    reason: "Updating the editor or migrating its runtime must never change bits, skill revisions or the content hash; provisional, checked against (float)decimal in a battery of values"
+    referenced_by:
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+      - design/gdd/dados-e-balanceamento.md
+    added: 2026-11-05
+    revised: ""
+  - purpose: data_content_hash
+    status: active
+    api: "FNV-1a 64-bit per byte over the canonical snapshot bytes: one hash per section in the directory and one for the whole file in the header; effective version hash = FNV-1a 64 over (embedded hash then pack hash), equal to the embedded hash when there is no pack"
+    not: "SHA-256 and other System.Security.Cryptography hashes, GetHashCode, hashing raw struct memory"
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    reason: "Identity and detection of accidental corruption, not security; no dependency; the remote package integrity and signature belong to the #29 ADR"
+    referenced_by:
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    added: 2026-11-05
+    revised: ""
+  - purpose: data_embedded_load
+    status: active
+    api: "The snapshot is a .bytes file imported as TextAsset, referenced by a [SerializeField] of a boot component and read synchronously before tick 0; SnapshotVerifier runs at boot (header, directory, catalog) and per phase section"
+    not: "Addressables for the embedded data, Resources.Load, generating the snapshot inside the build step"
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    reason: "Small immutable data needed before tick 0; avoids the Addressables exception-on-failure behaviour of Unity 6.2+ and the Resources guidance; a failed load blocks the phase and never falls back to a default value"
+    referenced_by:
+      - docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    added: 2026-11-05
+    revised: ""
+  - purpose: save_envelope_format
+    status: active
+    api: "Binary envelope: fixed header (magic, format version, checksum algorithm id, body size, body checksum, header checksum) followed by a little-endian TLV body (16-bit tag, 32-bit size, opaque value); FNV-1a 64 (the public stateless function of Forja.Data, named Fnv1a64 in the ADR-0003) over header and body; written and read field by field; unknown tags, slices and fields pass through intact; additive only"
+    not: "JsonUtility, BinaryFormatter, reflection, raw struct memory, a second checksum algorithm without an amendment, PlayerPrefs for progress"
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    reason: "Opaque sized slices keep unknown data intact and allow a read-only view of a newer format without reflection (IL2CPP stripping); the header is verified before the body so a bad header is corruption, never a newer format"
+    referenced_by:
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+      - design/gdd/save-local.md
+    added: 2026-11-05
+    revised: ""
+  - purpose: save_atomic_replace
+    status: active
+    api: "The commit swaps files atomically through ISaveStorage.Replace: File.Replace (Move when the destination is absent), libc rename as plan B, JNI Os.rename as plan C; Confirmed is sent only after the directory fsync; a leftover temporary file is an orphan, never promoted"
+    not: "Delete followed by Move without an explicit acceptance recorded in the ADR, copying over the backup, promoting a leftover temporary file"
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    reason: "The main file must never be absent during a commit and a confirmed commit must never be lost; an atomic swap proven on the reference device is a condition to accept the ADR"
+    referenced_by:
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+      - design/gdd/save-local.md
+    added: 2026-11-05
+    revised: ""
+  - purpose: sim_wave_rng_prepare
+    status: active
+    api: "SimWorld.RngWave(int waveIndex) returns a fresh Pcg32 by value: a pure function of the readonly waveBase = Mix(masterSeed XOR 0) written by Create and of the index (seed_w = Mix(waveBase XOR w), Pcg32(seed_w, seq = w)); accepted only in Created (Preparar) or inside the Tick, throws in every other state and for w < 0; touches no stream and no hash; SimContext.RngWave only delegates; only the #7 calls it in Preparar"
+    not: "A cache, a static table or a memoized field of wave generators; deriving from the current state of a stream; handing the master seed to a system; changing the IPreparaFase.Preparar signature for it"
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    reason: "The #7 draws the whole wave composition in Preparar (GDD #7 Regra 6), so no wave generator crosses ticks and only the cursors enter the #7 hash; hiding the master seed and keeping the function stateless keeps replay reproducible"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-05
+    revised: ""
+  - purpose: sim_death_cause
+    status: active
+    api: "enum DeathCause { Normal = 0, InvalidValue = 1, Rugido = 2 } with explicit values (they go to the log), growing only at the end; SimWorld.Kill(id, cause) keeps the first cause and ignores a second Kill on the same dead entity in the same tick; the cause lives only in DeathsThisTick, outside the Core hash; the Death event carries no cause (the log and presentation deduce it from the #7 Rugido event)"
+    not: "Hashing the cause in the Core, a switch over DeathCause without a throwing default, a system that acts on the cause without reflecting the effect in its own Hash"
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    reason: "The #6 resolves the typed Rugido request of the #7 and the #3, #8 and #24 read the cause to give half XP (one level at most), skip kill effects and skip loot; the Core only carries the cause"
+    referenced_by:
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-05
     revised: ""
 
 # Example:
@@ -247,16 +511,62 @@ forbidden_patterns:
     added: 2026-11-03
   - pattern: mutable_static_in_simulation
     status: active
-    description: "Forja.Simulation must not hold mutable static state; stream tables, SimMath and lookup tables are immutable."
+    description: "Forja.Simulation, Forja.Data (and its editor assembly), Forja.Gameplay.Sim (compositor and systems, including the #3), the data loader in Forja.Gameplay, the bridge, Forja.Save and the Android storage adapter in Forja.Gameplay (which keeps the writer thread) must not hold mutable static state, including static events, static caches (editor menu caches too) and RuntimeInitializeOnLoadMethod; stream tables, SimMath and lookup tables are immutable; Simulation.Create is a static factory with no static field."
     why: "With Enter Play Mode Options and no domain reload, static state survives between runs and breaks reproducibility."
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     added: 2026-11-03
+    revised: 2026-11-05
+    # was (ADR-0001 amendments, 2026-11-05): description "Forja.Simulation must not hold mutable static state; stream tables, SimMath and lookup tables are immutable."
+    # was (ADR-0002, 2026-11-05): the list did not include Forja.Data, its editor assembly and the data loader
+    # was (ADR-0003, 2026-11-05): the list did not include Forja.Save and the Android storage adapter
   - pattern: unordered_iteration_for_effect_order
     status: active
     description: "Effect order inside a tick must not come from iterating Dictionary or HashSet; iterate by ascending index."
     why: "Unordered collections can yield a different order between runs, which changes the result for the same seed and commands."
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     added: 2026-11-03
+  - pattern: authored_number_through_float
+    status: active
+    description: "An authored gameplay number must not pass through float or double (JsonUtility, a JSON number parsed by a library, ScriptableObject fields) before the decimal validation."
+    why: "0.1 as float is 0.100000001 and would leave a safe range whose maximum is 0.1; the authored value must be validated exactly (GDD #1)."
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    added: 2026-11-05
+  - pattern: data_conversion_during_phase
+    status: active
+    description: "No data file read, text parse or seconds-to-ticks conversion may happen between tick 0 and the end of the match; the phase data is complete, verified and immutable before the first tick."
+    why: "GDD #1 Core Rule 7: nothing is read or converted while a phase runs, so determinism and the frame budget do not depend on loading."
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    added: 2026-11-05
+  - pattern: culture_dependent_parse
+    status: active
+    description: "Parse and ToString of data values, ledgers, messages and hash text must use CultureInfo.InvariantCulture, and string sorts and compares of IDs must use StringComparer.Ordinal."
+    why: "Windows in pt-BR uses a decimal comma and a culture-aware sort; either would change data, ledgers, the index assigned to each ID and the content hash."
+    adr: docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md
+    added: 2026-11-05
+  - pattern: playerprefs_for_progress
+    status: active
+    description: "PlayerPrefs must not hold game progress, seals, marks or any save slice; it is only for trivial preferences."
+    why: "No atomicity, no backup, no checksum and no size control; the GDD #28 commit guarantees need files under ISaveStorage."
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    added: 2026-11-05
+  - pattern: save_during_phase
+    status: active
+    description: "The save must not write during a phase (from the BeginStage request to the end commit), nor inside Tick, nor be triggered from an ISimSystem; the pause does not write during a phase because the phase mark already covers it."
+    why: "A phase never writes progress (ADR-0001 tick purity, GDD #28 rule 5); the phase mark is the only write and it happens before tick 0."
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    added: 2026-11-05
+  - pattern: save_main_thread_io
+    status: active
+    description: "No File, Directory or PlayerPrefs access to the save files outside the ISaveStorage implementation, and no disk access or serialization of the save on the main thread; the main thread only assembles the snapshot and reads results between frames. Scope: the save files only, the embedded data snapshot (data_embedded_load) is read synchronously at boot."
+    why: "GDD #28 F3: the disk and the serialization stay off the main thread, and every access through ISaveStorage keeps each crash point testable with fault injection."
+    adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    added: 2026-11-05
+  - pattern: wave_rng_cache_across_ticks
+    status: active
+    description: "SimWorld.RngWave must stay stateless: no cache of wave generators, no static table and no memoized field, because that would be state that crosses ticks outside the hash; it always derives from the immutable waveBase, never from the current state of a stream."
+    why: "A generator cached across ticks and left out of the hash breaks replay without any error; the #7 draws the whole composition in Preparar precisely so no wave generator crosses ticks."
+    adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-05
 
 # Example:
 #

@@ -421,7 +421,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
 <script id="dados" type="application/json">
 {
  "gerado_em": "2026-11-05",
- "geral": 10,
+ "geral": 12,
  "fase_agora": 2,
  "fases": [
   {
@@ -459,18 +459,18 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "n": 2,
    "nome": "Desenho dos sistemas",
    "cor": "var(--ember)",
-   "p": 26,
+   "p": 32,
    "estado": "doing",
    "agora": true,
-   "d": "Escrever e revisar como cada parte do jogo funciona. MVP: 5 de 19 sistemas.",
+   "d": "Escrever e revisar como cada parte do jogo funciona. MVP: 6 de 19 sistemas.",
    "passos": [
     [
      "doing",
-     "Escrever os documentos (GDD): 5 de 40"
+     "Escrever os documentos (GDD): 6 de 40"
     ],
     [
      "doing",
-     "Revisar cada um: 0 aprovados, 5 revisados ao menos 1×"
+     "Revisar cada um: 0 aprovados, 6 revisados ao menos 1×"
     ],
     [
      "todo",
@@ -486,7 +486,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "n": 3,
    "nome": "Base técnica",
    "cor": "var(--violet)",
-   "p": 7,
+   "p": 21,
    "estado": "doing",
    "agora": false,
    "d": "Decidir como o jogo será construído por dentro.",
@@ -500,7 +500,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
      "Decisões técnicas (ADRs): 3 escritas, 0 aceitas"
     ],
     [
-     "todo",
+     "done",
      "Revisão da arquitetura"
     ],
     [
@@ -694,7 +694,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "MVP",
    "afazer",
    "O diário do jogo: registra o que acontece para medirmos se funciona.",
-   ""
+   "next"
   ],
   [
    6,
@@ -710,9 +710,9 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "Horda, waves e inimigos",
    "Gameplay",
    "MVP",
-   "afazer",
+   "revisao",
    "As ondas de inimigos, os elites e o chefe de cada fase.",
-   "next"
+   ""
   ],
   [
    8,
@@ -1014,7 +1014,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
  ],
  "por_tier": {
   "MVP": {
-   "feitos": 5,
+   "feitos": 6,
    "total": 19
   },
   "Vertical Slice": {
@@ -1053,7 +1053,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "n": 3,
    "nome": "Fluxo de fase",
    "sit": "revisao",
-   "rodadas": 1,
+   "rodadas": 2,
    "veredito": "NEEDS REVISION",
    "nota": "Controla a partida. Ganhou a cura a cada nível. Revisão independente em andamento.",
    "extras": [
@@ -1069,7 +1069,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "sit": "revisao",
    "rodadas": 1,
    "veredito": "MAJOR REVISION NEEDED",
-   "nota": "Dano, esquiva, golpes marcados no chão e peso dos golpes. O mais novo.",
+   "nota": "Dano, esquiva, golpes marcados no chão e peso dos golpes. Revisado; falta 1 critério e o re-review.",
    "extras": [
     [
      "y",
@@ -1077,9 +1077,18 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
     ],
     [
      "p",
-     "Revisão independente rodando"
+     "Aguarda re-review"
     ]
    ]
+  },
+  {
+   "n": 7,
+   "nome": "Horda, waves e inimigos",
+   "sit": "revisao",
+   "rodadas": 2,
+   "veredito": "NEEDS REVISION",
+   "nota": "Quem nasce, quando e onde, os elites e o rugido do chefe. Revisado 2 vezes.",
+   "extras": []
   },
   {
    "n": 28,
@@ -1098,6 +1107,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "status": "Proposed",
    "resumo": "Como o combate é calculado para a mesma partida dar sempre o mesmo resultado, 30 vezes por segundo. Base de tudo.",
    "falta": [
+    "Emenda com os pontos da revisão de arquitetura",
     "Testes técnicos (spikes)",
     "Nova revisão independente"
    ]
@@ -1119,24 +1129,25 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "resumo": "Como o progresso é gravado no celular sem nunca perder o último save bom, mesmo se o app fechar no meio.",
    "falta": [
     "Teste curto num <b>celular Android de verdade<\/b> (4 verificações)",
-    "Os ADRs 1 e 2 aceitos antes"
+    "Os ADRs 1 e 2 aceitos antes",
+    "Mover os arquivos de backup do Android para o lugar certo"
    ]
   }
  ],
  "numeros": {
-  "feitos": 5,
+  "feitos": 6,
   "total": 40,
-  "mvp_feitos": 5,
+  "mvp_feitos": 6,
   "mvp_total": 19,
   "adrs": 3,
   "adrs_aceitos": 0,
   "epicos": 0,
   "historias": 0,
   "historias_prontas": 0,
-  "rodadas": 8,
-  "revisados": 5,
+  "rodadas": 11,
+  "revisados": 6,
   "aprovados": 0,
-  "git": 21,
+  "git": 30,
   "codigo": 0
  },
  "textos": {
@@ -1156,7 +1167,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    ],
    [
     "warn",
-    "◐ 5 de 40 sistemas desenhados"
+    "◐ 6 de 40 sistemas desenhados"
    ]
   ],
   "historico": [
@@ -1191,14 +1202,18 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    {
     "data": "05/11/2026",
     "cor": "var(--violet)",
-    "titulo": "Decisões técnicas, Combate e o painel",
+    "titulo": "Decisões técnicas, Combate, Horda e o painel",
     "itens": [
      "Ajustes da revisão do #3 aplicados; 1ª decisão técnica emendada duas vezes.",
      "2ª e 3ª decisões técnicas escritas (dados e save).",
      "Combate e dano (#6) desenhado por inteiro.",
      "Checagem de consistência: 2 conflitos achados e já corrigidos.",
      "Painel do projeto criado, com atualização automática.",
-     "Revisões independentes do #6 e do #3 começando em outra sessão."
+     "Revisões independentes do #6 e do #3 começando em outra sessão.",
+     "Combate (#6) revisado: 6 decisões de jogo tomadas (esquiva no limite, punição, alvo do ataque, oferta de carta, golpes aguentados, kite) e 8 bloqueios técnicos corrigidos; falta corrigir 1 critério (hash igual no PC e no celular) e o re-review.",
+     "Horda, waves e inimigos (#7) escrito e revisado 2 vezes.",
+     "Revisão da arquitetura (2 passadas): reprovada por enquanto. Faltam 3 decisões técnicas para combate e horda, e nenhuma das 3 decisões está aceita. 125 requisitos rastreados.",
+     "Checagem de consistência: 1 conflito achado e corrigido (a oferta de carta do rugido do chefe abre na hora, como as outras)."
     ]
    }
   ],
@@ -1207,20 +1222,20 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
     "titulo": "Agora",
     "sub": "Em andamento ou imediato",
     "itens": [
-     "<b>Revisão independente do Combate (#6)<\/b> e nova revisão do Fluxo de fase (#3), em outra sessão.",
+     "<b>Corrigir 1 critério do Combate (#6)<\/b> (o do hash igual no PC e no celular) e fazer o re-review em sessão limpa (/clear); nova revisão do Fluxo de fase (#3).",
+     "<b>Emendar a 1ª decisão técnica (ADR-0001)<\/b> com os pontos da revisão de arquitetura (ficha da fase, nascimento e morte das entidades, eventos do rugido).",
      "<b>Atualizar o #1<\/b> com as regras de validação e os valores novos do combate.",
-     "<b>Salvar o trabalho no git<\/b> (commit): há 21 arquivos e pastas com mudanças ainda sem commit."
+     "<b>Salvar o trabalho no git<\/b> (commit): há 30 arquivos e pastas com mudanças ainda sem commit."
     ]
    },
    "seguida": {
     "titulo": "Em seguida",
     "sub": "Ainda na fase 2 e começo da 3",
     "itens": [
-     "<b>Desenhar o #7 Horda, waves e inimigos<\/b> (o próximo da lista).",
-     "<b>Decisão técnica das colunas do combate<\/b> (depende do #7).",
+     "<b>3 decisões técnicas novas para combate e horda<\/b>: os dados de cada inimigo, o caminho do dano e dos eventos, e a geometria.",
      "<b>Mais 13 sistemas da primeira versão<\/b>: #4, #5, #8, #9, #10, #12, #16, #17, #19, #20, #24, #25 e #30.",
      "<b>Revisão cruzada<\/b> de todos os documentos.",
-     "<b>Revisão da arquitetura<\/b>, numa sessão separada.",
+     "<b>Nova revisão da arquitetura<\/b> depois das decisões novas.",
      "<b>Teste no celular Android<\/b> (4 verificações do save e da gravação)."
     ]
    },
@@ -1239,7 +1254,8 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
   "atencao": [
    "O <b>celular de referência<\/b> (para medir desempenho) ainda não foi verificado. Sem ele não dá para aceitar as decisões técnicas.",
    "As 3 decisões técnicas dependem umas das outras e das <b>revisões independentes<\/b>: 0 aceitas até agora. Elas travam a criação das histórias.",
-   "Há <b>21 arquivos e pastas sem commit<\/b>: se algo der errado no computador, o trabalho recente pode se perder."
+   "A <b>revisão da arquitetura reprovou<\/b> por enquanto: combate e horda ainda não têm as decisões técnicas dos dados, do dano e da geometria.",
+   "Há <b>30 arquivos e pastas sem commit<\/b>: se algo der errado no computador, o trabalho recente pode se perder."
   ],
   "ajuda_atualizar": "Atualiza sozinho (hook do Claude Code) e com: python dashboard/atualizar.py"
  }

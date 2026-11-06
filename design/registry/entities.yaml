@@ -54,7 +54,7 @@
 #   in any other shape is reported as unsupported layout, with its number.
 
 version: 1
-last_updated: "2026-11-03"
+last_updated: "2026-11-05"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -130,6 +130,10 @@ formulas:
     referenced_by:
       - design/gdd/dados-e-balanceamento.md
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
     variables:
       - s
       - ticks_per_second
@@ -143,19 +147,24 @@ formulas:
     source: design/gdd/dados-e-balanceamento.md
     referenced_by:
       - design/gdd/dados-e-balanceamento.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/combate-e-dano.md
     variables:
       - r
       - ticks_per_second
     output_range: [-3.4e38, 3.4e38]
     expression: "r / 30 as a per-tick float; a single path, chosen by the #1 data ADR (divide in decimal, or multiply by SimClock.TickSeconds)"
-    notes: "Bounded by the knob's safe range divided by 30. The path is open (GDD OQ-2): dividing in decimal gives 3.33333325f for 100/s, multiplying by 1f/30f gives 3.3333335f. Summing 30 ticks is not exactly r on either path. Provisional, to be re-evaluated."
+    notes: "Bounded by the knob's safe range divided by 30. Decided in ADR-0002 (Proposed, provisional) and GDD #1 F2: divide in decimal at build time and convert to float once (100/s gives 3.33333325f); ADR-0001 was amended to this single path. Summing 30 ticks is not exactly r. Provisional, to be re-evaluated."
     added: 2026-11-03
-    revised: 2026-11-03
+    revised: 2026-11-05
+    # was (/consistency-check 2026-11-05, stale): notes "The path is open (GDD OQ-2): dividing in decimal gives 3.33333325f, multiplying by 1f/30f gives 3.3333335f"
   - name: capacidade_ok
     status: active
     source: design/gdd/dados-e-balanceamento.md
     referenced_by:
       - design/gdd/dados-e-balanceamento.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/horda-waves-e-inimigos.md
     variables:
       - pico
       - capacity_margin_pct
@@ -163,15 +172,17 @@ formulas:
       - capacity_ceiling
     output_range: [0, 1]
     expression: "pico * (100 + margem_pct) <= cap * 100 AND cap <= teto (64-bit integer math)"
-    notes: "Boolean (0 = rejected, 1 = ok). Peak is declared by the owner GDD (#7 for entities)."
+    notes: "Boolean (0 = rejected, 1 = ok). The declared demand is set by the owner GDD (#7 for entities): the simultaneous peak (alive list, events per tick, pools) and, for the SimWorld id table, the total spawns of the phase because entity ids are never reused (see capacidade_ids_ok)."
     added: 2026-11-03
-    revised: ""
+    revised: 2026-11-04
+    # was (2026-11-03): notes "Boolean (0 = rejected, 1 = ok). Peak is declared by the owner GDD (#7 for entities)." (GDD #1 F3 updated 2026-11-04 after /consistency-check and GDD #2 OQ-1)
   - name: grimorio_setup_ok
     status: active
     source: design/gdd/dados-e-balanceamento.md
     referenced_by:
       - design/gdd/dados-e-balanceamento.md
       - design/gdd/game-concept.md
+      - design/gdd/fluxo-de-fase.md
     variables:
       - grimorio_capacity_c
       - seal_size_s
@@ -203,17 +214,20 @@ formulas:
     source: design/gdd/dados-e-balanceamento.md
     referenced_by:
       - design/gdd/dados-e-balanceamento.md
+      - design/gdd/combate-e-dano.md
     variables:
       - min
       - max
       - padrao
       - pior
       - sentido
+      - aceite
     output_range: [0, 1]
-    expression: "min <= padrao <= max AND (acceptance knob -> padrao on the good side of pior)"
-    notes: "Boolean. Acceptance knobs without sentido (menor_melhor or maior_melhor) are rejected."
+    expression: "(min <= padrao <= max) AND (aceite = sim -> pior in [min, max] AND padrao on the good side of pior) AND (aceite = nao -> no pior and no sentido)"
+    notes: "Boolean. aceite (sim | nao) is an explicit field on every knob, never deduced from the presence of pior. Acceptance knobs without sentido (menor_melhor or maior_melhor) are rejected; a knob with pior or sentido but without aceite: sim is rejected too."
     added: 2026-11-03
-    revised: ""
+    revised: 2026-11-05
+    # was (/consistency-check 2026-11-05, stale): expression "min <= padrao <= max AND (acceptance knob -> padrao on the good side of pior)"; no `aceite` variable; notes only "Acceptance knobs without sentido ... are rejected" (GDD #1 F6 gained the explicit aceite field and the third clause)
   - name: effective_utc
     status: active
     source: design/gdd/save-local.md
@@ -246,6 +260,615 @@ formulas:
     revised: 2026-11-03
     # was (save-local.md, /design-review 2026-11-03, 1st pass): expression "save_sequence_saved + 1, only when a commit completes and is verified"; notes "A failed write consumes no number."
     # was (save-local.md, /design-review 2026-11-03, 2nd pass): output_range [1, 9223372036854775807]; expression "highest_sequence_seen (in memory and on disk, across main, backup and temp) + 1, reserved at the start of each attempt"; notes "Strictly increasing, unique per attempt" (read unverified files; unique across restore was not true)
+
+  - name: ticks_por_frame
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+    variables:
+      - dt
+      - acum
+      - max_ticks_per_frame
+      - tick_seconds
+    output_range: [0, 16]
+    expression: "dt_ef = min(dt, (Max + 1) * TickSeconds); n_devido = floor((acum + dt_ef) * 30); n = min(n_devido, Max); acum_novo = clamp((acum + dt_ef) - n_devido * TickSeconds, 0, TickSeconds)"
+    notes: "Runs in the bridge (Gameplay), outside the simulation and outside the hash. n is in [0, Max] and Max is in [1, 16] (a Max outside that range is refused when the bridge loads its configuration). dt NaN, negative or infinite becomes 0. The excess n_devido - n is discarded (slow motion), never recovered."
+    added: 2026-11-04
+    revised: 2026-11-04
+    # was (simulacao-deterministica.md, /design-review 2026-11-04): output_range [0, 2147483647]; Max had no upper bound
+  - name: alfa_interpolacao
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+    variables:
+      - acum_novo
+      - tick_seconds
+      - prev
+      - atual
+    output_range: [0, 1]
+    expression: "alfa = clamp(acum_novo / TickSeconds, 0, 1); pos_desenhada = prev + (atual - prev) * alfa"
+    notes: "Presentation only (#12 reads it). alfa is the output range; pos_desenhada lies between prev and atual. A newborn entity has prev = atual. A teleport must set prev = atual."
+    added: 2026-11-04
+    revised: ""
+  - name: seed_do_stream
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    variables:
+      - seedMestre
+      - id_s
+    output_range: [0, 18446744073709551615]
+    expression: "seed_s = SplitMix64Mix(seedMestre XOR id_s); gerador = Pcg32(seed_s, seq = id_s); stream ids Spawn=0, Offer=1, Loot=2"
+    notes: "Mix is a bijection, so seed 0 does not degenerate. The algorithm constants must be checked against the official reference vectors (GDD #2 AC-D2); none were invented."
+    added: 2026-11-04
+    revised: ""
+  - name: pcg32_xsh_rr
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    variables:
+      - state
+      - inc
+    output_range: [0, 4294967295]
+    expression: "init: state = 0; inc = (seq << 1) | 1; step; state += seed_s; step. step: state = state * 6364136223846793005 + inc. out: xs = ((old >> 18) ^ old) >> 27 as uint; rot = old >> 59; out = (xs >> rot) | (xs << ((-rot) & 31))"
+    notes: "PCG32 XSH-RR 64/32, period 2^64 per stream. State and inc enter the state hash. Constants to be checked against the public reference (GDD #2 AC-D2)."
+    added: 2026-11-04
+    revised: ""
+  - name: float01
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    variables:
+      - out
+    output_range: [0, 0.99999994]
+    expression: "(float)(out >> 8) * (1f / 16777216f)"
+    notes: "Never reaches 1; may be exactly 0. Step is 2^-24, exact in float32. Chances (loot, offer) are decided with integers (NextInt(10000) < chance), because 0.1f is not exact."
+    added: 2026-11-04
+    revised: ""
+  - name: int_limitado
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - n
+      - r
+    output_range: [0, 2147483646]
+    expression: "t = (0u - n) % n (which is 2^32 mod n); draw r until r >= t; result = r % n"
+    notes: "Rejection method, no modulo bias. Expected draws below 2 for every n up to 2^31-1. n = 1 still consumes one draw (provisional). n <= 0 is an internal bug and throws."
+    added: 2026-11-04
+    revised: ""
+  - name: seed_da_wave
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - seedMestre
+      - w
+    output_range: [0, 18446744073709551615]
+    expression: "base = Mix(seedMestre XOR 0); seed_w = Mix(base XOR w); gerador_w = Pcg32(seed_w, seq = w)"
+    notes: "Provisional derivation. #7 (Horda) must draw a wave only from its own generator and make the wave depend only on seedMestre, w and data, never on kills or ticks. w must be unique in the phase schedule (GDD #2 OQ-9)."
+    added: 2026-11-04
+    revised: ""
+  - name: eixo_limitado
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+    variables:
+      - X
+      - Y
+      - eixo_max
+    output_range: [-1, 1]
+    expression: "m2 = X*X + Y*Y; if m2 > 1 then (X, Y) = (X, Y) * (1 / Sqrt(m2))"
+    notes: "Modulus is at most 1 plus a few ulp of float rounding; #6 must not assume a strict 1. Commands with a non-finite axis or an absolute value above eixo_max are dropped before this."
+    added: 2026-11-04
+    revised: ""
+  - name: hash_estado
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - b
+      - h0
+    output_range: [0, 18446744073709551615]
+    expression: "FNV-1a 64: h0 = 0xCBF29CE484222325; per byte h = (h XOR b) * 0x100000001B3; floats enter by their bits with -0 normalised to +0"
+    notes: "Byte order is explicit little-endian by shifts. Out of the hash: previous position, EventBuffer, the 8 diagnostic counters of GDD #2 Rule 10 (DroppedEvents, CommandsRejected, SpawnsRejected, NonFiniteCount, GolpesDescartados, GolpesLimitados, ModForaDeFaixa, CurasDescartadas), the snapshot and the capacities. In the hash: CurrentTick, CombatTick, CombatHold, id counter, the 3 streams, and per id: alive, faction, Essencial, HP, x, y. The hash is per byte (provisional); the word-wise variant was dropped."
+    added: 2026-11-04
+    revised: 2026-11-05
+    # was (/consistency-check 2026-11-05, stale): notes "the 4 diagnostic counters"
+    # was (simulacao-deterministica.md, /design-review 2026-11-04): notes "the 7 diagnostic counters ... Word-wise variant is provisional, to decide in the hash spike"; CombatHold and Essencial were not listed
+    # was (simulacao-deterministica.md, /design-review 2026-11-04, 2nd pass): notes "the 5 diagnostic counters" (CommandsOutOfOrder was cut; 4 remain)
+  - name: capacidade_ids_ok
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/dados-e-balanceamento.md
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - total_spawns
+      - spawns_de_dados
+      - ids_de_preparacao
+      - capacity_margin_pct
+      - cap_ids
+      - capacity_ceiling
+    output_range: [0, 1]
+    expression: "total_spawns * (100 + margem_pct) <= cap_ids * 100 AND cap_ids <= teto (64-bit integer math); total_spawns = ids_de_preparacao + spawns_de_dados; spawns_de_dados = sum spawns(w) + max_invocacoes"
+    notes: "Same shape as capacidade_ok (GDD #1, F3) with peak := total_spawns, because entity ids are never reused. Total spawns is declared by #3 (ids_de_preparacao, the hero), #7 and #8. Resolved 2026-11-04: GDD #1 F3 now validates the id table against the total spawns and the alive list against the simultaneous peak (GDD #2 OQ-1). Revised 2026-11-05 (propagate-design-change, GDD #1 P2): the check is split: the #1 DataValidator checks spawns_de_dados at build (the snapshot carries it, ADR-0002); the compositor adds ids_de_preparacao (code, #3 declares 1) and redoes the full check before Create (ADR-0001 item 6); a failure is FalhaInterna(DadosInvalidos) built by #3. Provisional."
+    added: 2026-11-04
+    revised: 2026-11-05
+    # was (propagate-design-change 2026-11-05): expression and notes without the split between build and compositor; variables without spawns_de_dados and ids_de_preparacao
+    # was (simulacao-deterministica.md FS9, /consistency-check + propagation 2026-11-04): notes "Total spawns is declared by #7 and #8"; total_spawns = entidades_iniciais + sum spawns(w) + max_invocacoes, now ids_de_preparacao + sum spawns(w) + max_invocacoes
+  - name: limiar_xp
+    status: active
+    source: design/gdd/fluxo-de-fase.md
+    referenced_by:
+      - design/gdd/fluxo-de-fase.md
+    variables:
+      - n
+      - xp_base
+      - xp_inc
+      - xp_quad
+      - nivel_max
+    output_range: [1, 2147483647]
+    expression: "xp_base + xp_inc * k + xp_quad * k * k, with k = n - 1, for 1 <= n <= nivel_max - 1 (integers, long intermediates)"
+    notes: "XP needed to go from level n to n+1, per attempt (level resets every attempt). Strictly increasing when xp_inc >= 1 and xp_quad >= 0. GDD #1 computes the value at nivel_max - 1 in long and rejects the dataset above 2^31 - 1, never clamps. Knob values are to be calibrated in the prototype; the GDD example numbers are illustrative only. Provisional."
+    added: 2026-11-04
+    revised: ""
+  - name: laco_de_nivel
+    status: active
+    source: design/gdd/fluxo-de-fase.md
+    referenced_by:
+      - design/gdd/fluxo-de-fase.md
+    variables:
+      - Nivel
+      - XpAtual
+      - NiveisGanhos
+      - xp_do_tick
+      - nivel_max
+    output_range: [0, 2147483647]
+    expression: "xp = XpAtual + xp_do_tick; while Nivel < nivel_max and xp >= limiar_xp(Nivel): xp -= limiar_xp(Nivel), Nivel += 1, NiveisGanhos += 1; at Nivel == nivel_max: xp = 0"
+    notes: "Invariants: at most nivel_max - 1 steps; outside the cap XpAtual < limiar_xp(Nivel); at the cap XpAtual = 0 so the hash is canonical; NiveisGanhos = Nivel - 1 in every attempt. NiveisGanhos only grows and is the contract read by GDD #16 (offer cursor). No XP and no level is granted in the tick where the phase ends."
+    added: 2026-11-04
+    revised: ""
+  - name: derrota_por_tempo
+    status: active
+    source: design/gdd/fluxo-de-fase.md
+    referenced_by:
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - ChefeVisto
+      - CombatTick
+      - TickDeEntradaDoChefe
+      - ticks_max_apos_chefe
+      - tick_entrada_chefe_agendado
+    output_range: [0, 1]
+    expression: "ChefeVisto AND (CombatTick - TickDeEntradaDoChefe >= ticks_max_apos_chefe); chefe_ausente = NOT ChefeVisto AND CombatTick >= tick_entrada_chefe_agendado + ticks_max_apos_chefe"
+    notes: "Boolean (0 = no, 1 = yes). ticks_max_apos_chefe is F1 of GDD #1 (duracao_ticks) applied to the knob duracao_max_apos_chefe_s; the #3 only reads the integer. CombatTick is the value the system sees, already including the current tick. DerrotaTempo counts as a phase death; chefe_ausente is FalhaInterna and does not. Victory wins if the boss dies in the same tick. Provisional."
+    added: 2026-11-04
+    revised: ""
+  - name: teto_de_fase_ok
+    status: active
+    source: design/gdd/fluxo-de-fase.md
+    referenced_by:
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - xp_total_fase
+      - P
+      - folga_pool
+      - teto_xp_min_pct
+      - teto_xp_max_pct
+      - nivel_max
+    output_range: [0, 1]
+    expression: "sem_teto = max n <= nivel_max with acum(n) <= xp_total_fase; ok = (sem_teto - 1 <= P - folga_pool) AND (sem_teto = nivel_max) AND (acum(nivel_max) * 100 >= xp_total_fase * teto_xp_min_pct) AND (acum(nivel_max) * 100 <= xp_total_fase * teto_xp_max_pct); acum(n) = sum of limiar_xp(m) for m = 1..n-1"
+    notes: "Boolean setup check applied by GDD #1 (rejects the phase, never adjusts). P = P_f + P_c from grimorio_setup_ok (not the function pool alone). xp_total_fase is summed by #1 from the data #7 declares, boss excluded. The pct band is the systems-designer reading of too early and never reached, provisional, to calibrate in the prototype. Integer math in long. It runs twice, with xp_total_fase = xp_max and = xp_min from GDD #7 F9 (escort excluded from xp_min), and passes only if both pass (GDD #3 F5 amended 2026-11-05)."
+    added: 2026-11-04
+    revised: 2026-11-05
+    # was (/consistency-check 2026-11-05): notes did not mention the two-ended XP input requested by GDD #7 F9
+  - name: dano_final
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - base
+      - bonus_i
+      - modDano
+      - mit
+      - mult_punicao
+      - mult_punicao_pesado
+      - mult_punicao_aberto
+      - DANO_MAX
+      - MODDANO_MAX
+      - MIT_MAX
+    output_range: [0, DANO_MAX]
+    expression: "base * modDano * (1 - clamp(mit, 0, MIT_MAX)) * punicao, modDano = 1 + sum(bonus_i), clamped to DANO_MAX; punicao = 1 outside Recuperacao, mult_punicao_aberto if the Recuperacao is Aberto, mult_punicao_pesado for the first heavy hit (punidoPesado false), else mult_punicao; the multipliers never multiply each other; mit NaN raises (internal bug)"
+    notes: "Final damage of one hit in float32. Invalid input (NaN, infinity, negative, modDano outside [1, MODDANO_MAX]) is discarded and counted; above DANO_MAX it is clamped and counted. The typed Rugido request of GDD #7 (Regra 3 of GDD #6) carries no damage value and never passes through this formula (no clamp, GolpesLimitados stays 0). Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (emenda (c) do #7 aplicada ao #6, 2026-11-05): notes without the Rugido sentence
+    # was (re-review of GDD #6, 2026-11-05): expression had only mult_punicao (no heavy-hit or Aberto multiplier) and mit NaN was not rejected
+  - name: hp_resolucao
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    variables:
+      - HP
+      - HPmax
+      - acc
+      - curaAcc
+      - HP_RESIDUO
+    output_range: [0, HPmax]
+    expression: "base = min(HPmax, HP + curaAcc); HP' = (base - acc < HP_RESIDUO) ? 0 : base - acc"
+    notes: "Two-phase resolution: 7a sums damage and healing per target in queue order (only targets alive at the start of the pass), 7b writes HP by ascending id and calls Kill when HP' is 0. The queue order is part of the contract. The typed Rugido request of GDD #7 sits at the front of the queue, does not add to acc, sets HP' to 0 in 7b and fixes the death cause to Rugido (DeathCause.Rugido is in ADR-0001 Emenda 15, still Proposed). Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (emenda (c) do #7 aplicada ao #6, 2026-11-05): notes without the Rugido sentence
+    # was (ADR-0001 Emenda 15, 2026-11-05): notes said DeathCause.Rugido still had to be added to ADR-0001
+  - name: knockback
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - D
+      - K
+      - resist
+      - v0
+      - dir
+    output_range: [0, D_MAX]
+    expression: "D_ef = D * (1 - resist); v0 = 2 * D_ef / (K + 1); v_t = v0 * dir * (r / K)"
+    notes: "Linear decay over K ticks, total displacement D_ef. A new knockback wins only if v0_new > |v_current|. Essencial has resist 1 and the elite has a refractory period. Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: ""
+  - name: cadencia_efetiva
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    variables:
+      - cad_ticks
+      - modCadencia
+      - MOD_CAD_MIN
+      - MOD_CAD_MAX
+    output_range: [1, cad_ticks * MOD_CAD_MAX]
+    expression: "max(1, (int)(cad_ticks * modCadencia + 0.5f))"
+    notes: "modCadencia multiplies the interval: below 1 is faster; the #8 writes 1/(1+sum of bonuses). A new value applies on the next reload. Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: ""
+  - name: aviso_minimo
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - raio_golpe
+      - margem
+      - vel_heroi_min_tick
+      - REACAO
+      - JANELA
+      - A
+    output_range: [1, A]
+    expression: "A >= REACAO + ceil((raio_golpe + margem) / vel_heroi_min_tick) + JANELA"
+    notes: "Computed in decimal at build time with the slowest hero (the Tank). 24 (elite) and 36 (chief) ticks are the per-hit minimum, not the default. For a line-shaped hit (GDD #6 Regra 6, the Campeao charge) raio_golpe is the half width of the line. Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (emenda (g) do #7 aplicada ao #6, 2026-11-05): notes without the line-shaped sentence
+  - name: esquiva_coerente
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    variables:
+      - I
+      - R
+      - Ddash
+      - raio_golpe_max
+      - margem
+    output_range: [7, 15]
+    expression: "I >= 7, R >= 3 * I (absolute floor R > I only for the #8 cooldown reduction), v_dash = Ddash / I, exits the area iff Ddash >= raio_golpe_max + margem"
+    notes: "I-frames and dash last I ticks; timers are decremented before any start so I ticks mean I ticks. The dash does not cover the chief area: timing and walking do. A dodge that negates an elite or chief Impact when I - iframes <= lim_esquiva_ticks refunds the cooldown (once per Impact) and marks the attacker Aberto (GDD #6 Regra 8; worst-case coverage about 49% with 3 elites). Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: ""
+  - name: contato_maximo
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - contato_gap_ticks
+      - cad_contato_ticks
+      - dano_contato_max
+      - mit_contato
+      - HP
+      - X
+    output_range: [0, 5 * d_c]
+    expression: "d_c = dano_contato_max * (1 - mit_contato); t_morte_min = contato_gap_ticks * (n - 1) with n = ceil(HP / d_c); #1 requires t_morte_min >= X, that is d_c < HP / ceil(X / contato_gap_ticks)"
+    notes: "Upper bound of damage per second from contact alone, independent of horde size. X is 240 ticks (author decision 2026-11-05). Contact exists only for the Horda class: dano_contato_max is the largest dano_contato among Horda archetypes, and n_c counts only Horda bodies (elite and chief have no contact damage, GDD #6 Regra 5). Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (emenda (h) do #7 aplicada ao #6, 2026-11-05): notes without the Horda-only sentence
+  - name: orcamento_hitstop
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    variables:
+      - N
+      - H
+      - HS_SUPR
+      - margem_supr
+      - proximoHitStopTick
+    output_range: [0, 30 / N]
+    expression: "emit iff eligible && !suppressed && CombatTick >= proximoHitStopTick; then proximoHitStopTick = CombatTick + N"
+    notes: "Hit-stop is presentation only; the simulation and the telegraph never freeze. N starts at 10 (3 events per second at most, the art bible flash limit). Contact never emits it. Suppression does not consume the budget. Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: ""
+  - name: folga_de_golpes
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - base_golpe
+      - HP
+      - mit_golpe
+      - A
+      - P
+      - g
+    output_range: [1, 2147483647]
+    expression: "n = ceil(HP / (base * (1 - mit_golpe))); required n_DPS = 2 (HP/2*1.01 <= d_ef < HP*0.99) and n_Tank = 3 (HP/3*1.01 <= d_ef < HP/2*0.99) for every telegraph hit of elite and chief; ttk = A + (n - 1) * (A + 1 + P + g) for one attacker; ttk_multi = A + (n - 1) * GAP_IMPACTO for n alternating elites"
+    notes: "Author decision 2026-11-05: no hero dies in one hit at full HP; the DPS takes 2 hits and the Tank 3. GDD #6 F9 only states n >= 1; the requirement fixes n = 2 (DPS) and n = 3 (Tank). The Tank mit_golpe window is narrow (about 0.18 to 0.43 with HP 100 and base 60, 1% float margin on both sides). The chief may declare its own mit_golpe_chefe. Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (/consistency-check 2026-11-05, stale): output_range [1, 4], not stated by GDD #6 F9
+  - name: intervalo_entre_impactos
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - tick_impacto_novo
+      - tick_impacto_outro
+      - GAP_IMPACTO
+      - I
+      - ticks_para_sair
+    output_range: [9, 30]
+    expression: "|tick_impacto_novo - tick_impacto_outro| >= GAP_IMPACTO, GAP_IMPACTO >= max(I, ticks_para_sair of the new hit)"
+    notes: "Keeps damage from stacking in the same 7a pass; the Aviso that does not fit waits by id (the chief goes first and blocks new elite Avisos while it waits). The check is symmetric (absolute difference, run for every new Aviso against every scheduled Impact) and ticks_para_sair uses vel_heroi_min_tick (Tank 0.12 m/tick: GAP 9 only fits radius <= 0.78 m). Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: ""
+  - name: aviso_perto
+    status: deprecated
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    variables:
+      - ticks_ate_dano
+      - HS_SUPR
+      - raio_golpe
+      - margem_supr
+      - espera_oferta_max_ticks
+    output_range: [false, true]
+    expression: "exists aviso: 1 <= ticks_ate_dano <= HS_SUPR && dist2(heroi, origem) <= (raio_golpe + margem_supr)^2"
+    notes: "DEPRECATED 2026-11-05 (re-review of GDD #6: the offer now opens at once with a 3-2-1 countdown under CombatHold, Regra 16; F11 removed; GDD #7 no longer cites it (fixed by /consistency-check 2026-11-05)). Was: read-only flag the #16 reads before opening the card offer; the offer waits at most espera_oferta_max_ticks (90) and then opens anyway. Same predicate as the hit-stop suppression. For a line-shaped hit (GDD #6 Regra 6) dist2(heroi, origem) is the squared distance from the hero to the locked segment. Provisional; the numbers in the GDD examples are illustrative until the #1 has archetype data."
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (emenda (g) do #7 aplicada ao #6, 2026-11-05): notes without the line-shaped sentence
+    # was (/consistency-check 2026-11-05, GDD #7 stopped citing it): referenced_by also listed design/gdd/horda-waves-e-inimigos.md
+  - name: tick_do_corpo
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - inicio_s
+      - espalhar_ticks
+      - contagem
+      - k
+    output_range: [0, 2147483647]
+    expression: "inicio_ticks = floor(inicio_s * 30 + 0.5); tick(k) = inicio_ticks + floor(k * espalhar_ticks / contagem); fim_pulso = inicio_ticks + espalhar_ticks"
+    notes: "Instant rule (>= 0, <= instante_max_s), not the duration rule of duracao_ticks. k * espalhar in long. Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: tick_da_escolta
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/fluxo-de-fase.md
+    variables:
+      - inicio_chefe_ticks
+      - escolta_total
+      - escolta_por_pulso
+      - escolta_intervalo_ticks
+      - ticks_max_apos_chefe
+    output_range: [0, 2147483647]
+    expression: "tick(j) = inicio_chefe + (floor(j / por_pulso) + 1) * intervalo; n_pulsos = (total == 0 ? 0 : ceil(total / por_pulso)); escolta_cabe = n_pulsos * intervalo < ticks_max_apos_chefe; a due pulse waits while the chief is in Aviso or Impacto (schedule check unchanged)"
+    notes: "escolta_cabe is blocking (setup of the #1). Total 0 passes. Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: composicao_entrada
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/simulacao-deterministica.md
+    variables:
+      - peso_i
+      - S
+      - N_DIR
+      - contagem
+      - frentes
+      - escolta_total
+      - n_pulsos
+    output_range: [0, 2147483647]
+    expression: "r = NextBounded(S), archetype = first i (ascending id) with r < cumulative weight; dir = NextBounded(N_DIR) per front; n_calls(Horda) = contagem + frentes, Elite = 2, Chefe = escolta_total + n_pulsos"
+    notes: "All draws in Preparar from the wave generator of FS6 (seed_da_wave); draw even with a 1-archetype pool. Output is the exact call count the FS6 test checks. Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: posicao_nascimento
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/combate-e-dano.md
+    variables:
+      - H
+      - d
+      - R_spawn_m
+      - R_min_spawn_m
+      - form
+      - L
+      - A
+    output_range: [0, 3.4e38]
+    expression: "P_f = H + d*R, mirrored per axis (H - d*R) when out of [0,L]x[0,A]; q = clamp(P_f + form[idx]); q = P_f when dist2(q,H) < R_min^2; a front whose mirrored direction (compared by the vector-class id from the #1, over all lower fronts of the same entry, with or without a body this tick) equals a lower front advances its direction index cyclically (no extra draw); escort does not deduplicate; escort: front = floor(j / por_pulso), idx = (j mod por_pulso) mod N_FORM; chief uses R_chefe_m instead of R_spawn"
+    notes: "Pure function, no draw, float32 in the tick, no sqrt or trig. Distance to hero >= 0.99*R >= R_min given arena_ok. Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: arena_ok
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/dados-e-balanceamento.md
+      - design/gdd/combate-e-dano.md
+    variables:
+      - arena_largura_m
+      - arena_altura_m
+      - R_spawn_m
+      - margem_spawn_m
+      - R_min_spawn_m
+      - alcance_contato_m
+      - dir_chefe
+    output_range: [0, 1]
+    expression: "L >= 2.02*R + m AND A >= 2.02*R + m (m >= 0.01) AND 0.98*R >= R_min > alcance_contato_m AND every direction 0.9801 <= |d|^2 <= 1.0201 AND 0 <= dir_chefe < N_DIR; chefe_na_tela_ok = 0.98*R_chefe >= R_min AND 1.01*R_chefe <= meia_altura_visivel_m - margem_visivel_m AND R_chefe <= R; spawn_fora_ok = R >= meia_altura_visivel_m + margem_visivel_m; the phase passes with arena_ok AND chefe_na_tela_ok AND spawn_fora_ok"
+    notes: "Boolean, blocking setup check of the #1, in decimal. spawn_fora_ok is the testable proxy for outside the screen; it gains R >= meia_diagonal_visivel_m + margem when the #4 exists. frentes <= N_DIR is in estrutura_ok (F10), not here. Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: vagas_horda
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - teto_vivos_horda
+      - vivos_horda
+      - pendentes
+    output_range: [0, 2147483647]
+    expression: "vagas = max(0, teto_vivos_horda - vivos_horda); nascem = min(vagas, pendentes, max_nascimentos_por_tick); for escort bodies each body also requires the chief not in Aviso or Impacto (state read at the end of the previous tick)"
+    notes: "Horde bodies that do not fit wait in order (tick_do_corpo, w, k); elite and chief never wait for this cap. Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: total_spawns_7
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/dados-e-balanceamento.md
+      - design/gdd/simulacao-deterministica.md
+    variables:
+      - contagem_horda
+      - N_elite
+      - escolta_total
+    output_range: [1, 9223372036854775807]
+    expression: "sum(contagem of Horda entries) + N_elite + 1 (chief) + escolta_total, in long"
+    notes: "The #7 term of sum spawns(w) in FS9 (capacidade_ids_ok). Declared maximum; cancellations only lower the real count. Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: pico_vivos_7
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/dados-e-balanceamento.md
+    variables:
+      - teto_vivos_horda
+      - contagem_horda
+      - escolta_total
+      - N_elite
+    output_range: [1, 2147483647]
+    expression: "min(teto_vivos_horda, sum contagem_horda + escolta_total) + min(1, N_elite) + 1"
+    notes: "The #7 term of the alive-list peak checked by capacidade_ok (plus 1 for the hero and the #8 term). Worst tick is the chief entry (roar resolves later in the #6 step). Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: xp_total_fase_dados
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/dados-e-balanceamento.md
+      - design/gdd/fluxo-de-fase.md
+    variables:
+      - contagem
+      - xpDaMorte
+      - escolta_total
+    output_range: [0, 9223372036854775807]
+    expression: "xp_max = sum contagem*max_pool(xp) + sum elite max_pool(xp) + escolta_total*max_pool_escolta(xp); xp_min = same with min_pool and without escort; xp_min is a reference, NOT a floor (cancellations and xp_rugido_permil reduce real XP)"
+    notes: "Feeds teto_de_fase_ok (F5 of the #3), which must pass with both ends. Chief excluded. Equal xp inside a pool is not required. Provisional."
+    added: 2026-11-05
+    revised: ""
+  - name: cronograma_ok
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/dados-e-balanceamento.md
+      - design/gdd/fluxo-de-fase.md
+    variables:
+      - inicio
+      - fim_pulso
+      - respiro_elite_min_ticks
+      - silencio_pre_chefe_ticks
+    output_range: [0, 1]
+    expression: "estrutura_ok AND every Elite starts >= fim_pulso + viagem_ticks of every earlier Horda + respiro_elite_min, viagem_ticks = ceil((1.01 * R_spawn + formacao_max_m) / vel_min_pool * 30) AND every later Horda starts >= Elite start + duelo_min_ticks, duelo_min_ticks = graca_max_pool + ciclo_golpe_max_pool (worst case of the pool) AND reserva_ok (each Elite window has a contiguous stretch >= janela_reserva_ticks) AND chief starts >= max fim + silencio_pre_chefe, where fim = fim_pulso + viagem_ticks for Horda and inicio + duelo_min_ticks for Elite AND escolta_cabe"
+    notes: "Boolean, blocking setup check of the #1. estrutura_ok covers unique w, exactly one last Chefe, Elite count 1, empty attack cycle for Horda, chief graca + aviso_chefe_ticks_min < ticks_max_apos_chefe, alcance_inicio_aviso_m <= meia_altura_visivel_m - margem_visivel_m, escolta_por_pulso >= 1 when escolta_total > 0, no repeated archetype in a pool, vel_per_s > 0 for Horda, inicio(C) >= 1, dist_parada_m > 0 and <= the smallest alcance_inicio_aviso_m of the archetype for Elite and Chefe, every Elite and Chefe cycle has at least one alcanca_fuga hit, phase 1 Campeao cycle is the charge only, 1 <= frentes <= min(contagem, N_DIR), S <= 2^31 - 1, every cited archetype exists and is not deprecated, no Chefe-class archetype outside the Chefe entry, tick_entrada_chefe_agendado = inicio(C). Provisional."
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (/consistency-check 2026-11-05, incomplete): notes listed estrutura_ok without alcanca_fuga, the phase-1 Campeao rule, "dist_parada_m <= alcance_inicio_aviso_m", the frentes range, S <= 2^31 - 1, deprecated/Chefe-class archetype checks (GDD #7 F10 estrutura_ok has them)
+  - name: carga_tank
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+    variables:
+      - dps_ref_tank_horda_per_s
+      - HP_horda
+      - inicio_chefe_ticks
+      - hp_med_fase
+      - teto_vivos_horda
+    output_range: [0, 3.4e38]
+    expression: "rho = HP_horda / (dps_tick * inicio_chefe_ticks); B_t = max(0, B_t-1 + chegada_t - dps_tick); arrivals and body count both use the weighted mean HP (hp_med); saturacao_pct, espera_no_chefe and RespiroCurto from B_t / hp_med_fase; RugidoMuitosNiveis when niveis_no_rugido > niveis_rugido_max, where XP_cheio = min(teto, vivos_est_chefe)*max_xp_horda + max_xp_elite, XP_rugido = floor(XP_cheio*xp_rugido_permil/1000), pre = max(0, xp_min - XP_cheio) and niveis_no_rugido counts acum(n) in (pre, pre + XP_rugido]"
+    notes: "Non-blocking signal (CargaTankAlta, RespiroCurto, RugidoMuitosNiveis). The #3 applies at most niveis_rugido_max (1) level from the roar; the rest of the XP is lost. Becomes blocking once the Tank kill rate comes from #6, #8 and #10. Provisional."
+    added: 2026-11-05
+    revised: ""
+
 
 # Example:
 #
@@ -284,6 +907,10 @@ constants:
     source: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     referenced_by:
       - design/gdd/dados-e-balanceamento.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
     value: 30
     unit: ticks/s
     added: 2026-11-03
@@ -302,6 +929,7 @@ constants:
     source: design/gdd/game-concept.md
     referenced_by:
       - design/gdd/dados-e-balanceamento.md
+      - design/gdd/fluxo-de-fase.md
     value: 7
     unit: phase-boss wins
     added: 2026-11-03
@@ -329,10 +957,182 @@ constants:
     source: design/gdd/dados-e-balanceamento.md
     referenced_by:
       - design/gdd/dados-e-balanceamento.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/horda-waves-e-inimigos.md
     value: 25
     unit: percent
     added: 2026-11-03
     revised: ""
+  - name: max_ticks_per_frame
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    value: 4
+    unit: "ticks per screen frame (provisional, to measure on the reference device; safe range 1 to 16; owned by GDD #2 as a bridge knob, not remote, not stored by #1)"
+    added: 2026-11-04
+    revised: 2026-11-04
+  - name: eixo_max
+    status: active
+    source: design/gdd/simulacao-deterministica.md
+    referenced_by:
+      - design/gdd/simulacao-deterministica.md
+    value: 1
+    unit: "joystick axis component (provisional, to confirm with #4)"
+    added: 2026-11-04
+    revised: ""
+  - name: ids_de_preparacao
+    status: active
+    source: design/gdd/fluxo-de-fase.md
+    referenced_by:
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/dados-e-balanceamento.md
+    value: 1
+    unit: "entity ids consumed by the #3 in Preparar (the hero), counted in the phase total spawns and summed by GDD #2 FS9 (provisional)"
+    added: 2026-11-04
+    revised: 2026-11-05
+    # was (/consistency-check 2026-11-05, stale): unit "(provisional; GDD #2 FS9 must sum it, adjustment pending)"
+  - name: reacao_ticks
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    value: 8
+    unit: "ticks, player reaction time in the minimum Aviso (project constant, GDD #6 F5); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: janela_ticks
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/simulacao-deterministica.md
+    value: 5
+    unit: "ticks, minimum dodge window counting jitter (project constant, GDD #6 F5; GDD #2 requires at least 5); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: iframes_ticks
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    value: 9
+    unit: "ticks of dodge i-frames and dash (GDD #6 F6; the #1 validates >= 7); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: lim_esquiva_ticks
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    value: 3
+    unit: "ticks; a dodge counts as 'at the limit' when I - iframes <= this value at the Impact (refunds the cooldown and marks the attacker Aberto, GDD #6 Regra 8, author decision 2026-11-05); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: buffer_esquiva_ticks
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    value: 3
+    unit: "ticks; a Esquivar pressed with at most this many ticks of cooldown left is kept and fires when the cooldown ends (GDD #6 Regra 8, re-review 2026-11-05); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: recarga_esquiva_ticks
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+    value: 60
+    unit: "ticks of dodge cooldown (GDD #6 F6; must exceed iframes_ticks); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: max_avisos
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    value: 3
+    unit: "simultaneous elite or chief Avisos anywhere in the arena (GDD #6 Regra 6); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: contato_gap_ticks
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    value: 6
+    unit: "minimum ticks between two contact hits on the hero (GDD #6 F7); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: tempo_morte_contato_min_ticks
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    value: 240
+    unit: "minimum ticks for the horde to kill the hero by contact alone, no dodge (GDD #6 F7, author decision 2026-11-05); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: aviso_elite_ticks_min
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    value: 24
+    unit: "ticks, minimum Aviso of an elite hit (GDD #6 F5), not the default; Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: aviso_chefe_ticks_min
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    value: 36
+    unit: "ticks, minimum Aviso of a chief hit (GDD #6 F5), not the default; Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: ""
+  - name: teto_vivos_horda
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/dados-e-balanceamento.md
+      - design/gdd/combate-e-dano.md
+    value: 300
+    unit: "living horde bodies per phase (illustrative, fixed at the end of the performance spike; not remote); enters pico_vivos_7 and the #6 cap_fila (the roar queues up to this many hits in one tick)"
+    added: 2026-11-05
+    revised: ""
+  - name: graca_ataque_ticks
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/combate-e-dano.md
+    value: 30
+    unit: "ticks after tickNascimento before an elite may start its first Aviso (chief: 60); executed by the #6 (Regra 7 of GDD #6, applied 2026-11-05: Perseguindo -> Aviso needs CombatTick >= tickNascimento + graca_ataque_ticks; the grace counts toward prontoDesde); Provisional initial value; the knob lives in the #1."
+    added: 2026-11-05
+    revised: 2026-11-05
+    # was (/consistency-check 2026-11-05, amendment applied): unit "executed by the #6 (pending amendment)"
+  - name: fator_parada
+    status: active
+    source: design/gdd/combate-e-dano.md
+    referenced_by:
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    value: 0.99
+    unit: "fraction of dist_parada_m that an elite or chief aims for in Perseguindo (the #6 stops them when d2 <= dist_parada_m^2); a float32 margin so a stop at exactly alcance_inicio_aviso_m never lands 1 ulp outside the range; GDD #6 Regra 2.5 (emenda (i) do #7), constant not knob; Provisional"
+    added: 2026-11-05
+    revised: ""
+
 
 # Example:
 #
