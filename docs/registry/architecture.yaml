@@ -40,7 +40,7 @@
 #   unsupported layout, with its number.
 
 version: 1
-last_updated: "2026-11-05"
+last_updated: "2026-11-06"
 
 # ─── STATE OWNERSHIP ─────────────────────────────────────────────────────────
 # Who is the authoritative owner of each piece of shared game state.
@@ -58,12 +58,14 @@ state_ownership:
     status: active
     owner_system: sim-world
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
-    interface: "SimWorld (Forja.Simulation): id, posicao atual e do tick anterior, faccao, HP e vivo; ids monotonicos por fase, nunca reutilizados; colunas extras so por ADR de #6 e #7"
-    write_access: "isimsystem-within-tick; plus the Spawn made by IPreparaFase.Preparar in state Created (whole row with hp and position, essential flag, no event)"
+    interface: "SimWorld (Forja.Simulation): id, posicao atual e do tick anterior, faccao, HP, vivo, xpValue, classe, arquetipoId, tickNascimento e hpMax; ids monotonicos por fase, nunca reutilizados; a linha de um morto nao e reciclada; novas colunas compartilhadas so por emenda ao ADR-0004"
+    write_access: "Spawn only for the whole row (inside the Tick, or in Created by IPreparaFase.Preparar, no event); HP and position only by the #6 through HpAndPosForWrite inside the Tick; Kill only by the #6 and by the Core on the non-finite value path"
     referenced_by:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
     added: 2026-11-03
-    revised: 2026-11-05
+    revised: 2026-11-06
+    # was (ADR-0001 Emendas 17 and 18, 2026-11-06): interface without xpValue, classe, arquetipoId, tickNascimento and hpMax, and with "colunas extras so por ADR de #6 e #7"; write_access "isimsystem-within-tick; plus the Spawn made by IPreparaFase.Preparar in state Created (whole row with hp and position, essential flag, no event)"
     # was (ADR-0001 amendments, 2026-11-05): write_access "isimsystem-within-tick-only"; the #3 now creates the hero in Preparar, before tick 0 (GDD #3 rule 3.4)
   - state: combat_hold
     status: active
@@ -122,6 +124,95 @@ state_ownership:
       - design/gdd/save-local.md
     added: 2026-11-05
     revised: ""
+  - state: entity_identity_columns
+    status: active
+    owner_system: sim-world
+    adr: docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    interface: "SimWorld read-only spans of length IdCount: Classes (EntityClass), ArchetypeIds, BirthCombatTicks, HpMaxes; the (classe, arquetipoId) pair is the key into the snapshot; hashed by the Core together with xpValue"
+    write_access: "Spawn only (Created in Preparar, or inside the Tick); immutable afterwards; Spawn throws on EntityClass.None, archetypeId below 0 and a non-finite or non-positive hp"
+    referenced_by:
+      - docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-06
+    revised: ""
+  - state: combat_columns
+    status: active
+    owner_system: combate-6
+    adr: docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    interface: "Per-entity tables in Forja.Gameplay.Sim indexed by entity id (length at least EntityCapacity, sliced by IdCount) plus the single HeroCombat block; read by the #7 and the #12 only through ICombatReadView; hashed by the #6 own Hash; scratch (queue, acc, the Rugido signal, vivoNoInicio, intentVel) is outside the hash and empty at the end of every Step"
+    write_access: "the code of the #6 only; other systems enter through Combate.Aplicar and Combate.Curar (ADR-0005); state written by the #8 for the #6 to read lives in the #8 with its own view (ADR-0005)"
+    referenced_by:
+      - docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+      - docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    added: 2026-11-06
+    revised: 2026-11-06
+    # was (ADR-0005 sync note, 2026-11-06): interface listed curaAcc among the scratch; the heal has no scratch, Curar accumulates in curaPendente
+  - state: hp_and_position_writer
+    status: active
+    owner_system: combate-6
+    adr: docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    interface: "SimWorld.HpAndPosForWrite(out Span<float> hp, out Span<float> posX, out Span<float> posY): one call per Tick, spans of length IdCount at the call; PrevPos is never writable outside the Core"
+    write_access: "the #6 only, inside the Tick only (throws in every other state); enforced by code review and static analysis, the guard cannot tell callers apart; the Spawn writes the initial row"
+    referenced_by:
+      - docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+      - design/gdd/combate-e-dano.md
+      - docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    added: 2026-11-06
+    revised: ""
+    # supersedes in practice the write_access of entity_table once ADR-0001 Emenda 17 is applied; entity_table is not edited here
+  - state: arena_bounds
+    status: active
+    owner_system: compositor
+    adr: docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+    interface: "Arena (Forja.Simulation readonly struct): Width, Height, MaxBodyRadius, IsValid, Clamp(p, radius), OutsideX(x), OutsideY(y); the rectangle [0, Width] x [0, Height], delivered by value to the #6 and the #7"
+    write_access: "built once per phase by the compositor from the concrete snapshot, with MaxBodyRadius the largest body radius of the hero and the phase archetypes; immutable afterwards; derived from data and never hashed; the constructor throws in both modes on a non-finite value, a negative radius or a side not above twice the radius"
+    referenced_by:
+      - docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/combate-e-dano.md
+    added: 2026-11-06
+    revised: ""
+  - state: pause_reasons
+    status: active
+    owner_system: app-lifecycle
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    interface: "IPauseView (Forja.Gameplay.Sim.Host): IsPaused and PauseState {Active: PauseReason flags, Epoch: int that rises on every empty to non-empty transition of the mask}; PauseReason is a [Flags] enum with explicit values None 0, AppPaused 1, FocusLost 2, PauseMenu 4, Dialog 8, growing only at the end; the return from a pause is detected by Epoch, never by a state that only the Plan observes"
+    write_access: "one PauseGate per app, created by the AppLifecycle; AppPaused and FocusLost only by the AppLifecycle (FocusLost reconciled with Application.isFocused every frame), PauseMenu only by the #12 UI, Dialog only by the TentativaDeFase; each writer removes only what it added (a code review rule: Add and Remove are public); never reduced to a bool"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/fluxo-de-fase.md
+    added: 2026-11-06
+    revised: ""
+  - state: phase_log
+    status: active
+    owner_system: event-log-5
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    interface: "IPhaseLog (Forja.Gameplay.Sim.Log): one PhaseLog per phase, headless run and app session, on the main thread; the in-memory byte[] is written only by the PhaseLog and handed closed to the LogWriter; the file is read only by LogReader and LogComparer; the log is never part of the save (GDD #28 rule 3) and never read by a simulation system"
+    write_access: "the PhaseLog alone writes the buffer (header before Simulation.Create, one EventBatch per tick with at least one event, optional HashCheckpoint, Counters, HostNote, External); the footer is written after the commit response of the end of the phase, also on abandon; a LogWriter job on the ThreadPool writes log/name.tmp, Replace to log/name.fjlog and FsyncDirectory; no static mutable state in LogHost or LogWriter"
+    referenced_by:
+      - docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+      - design/gdd/simulacao-deterministica.md
+      - design/gdd/fluxo-de-fase.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0008): the GDD #5 does not exist yet; it decides what the acceptance measures and may override retention, buffer and checkpoint cadence
+  - state: presentation_state
+    status: active
+    owner_system: presentation
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    interface: "Forja.Gameplay.Presentation and Forja.Gameplay.Sim.View: lastFacing[id] (length EntityCapacity), the GhostPool (GHOST_POOL_MAX 300) and the CardPool (ALLY_CARD_MAX 150 plus CARD_POOL_MAX 32), the per-instance data array and the instance texture; all created on the loading screen, outside the hash and outside the log as game state; no mutable static (anything static is reset in RuntimeInitializeOnLoadMethod SubsystemRegistration)"
+    write_access: "only the PresentationDriver, from IPresentationSink.OnTick after every Tick and from its LateUpdate; the presentation never writes to the simulation, never calls Tick, Spawn or Kill, and nothing it keeps enters the hash"
+    referenced_by:
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0009): the GDD #12 does not exist yet; it becomes the owner of the renderers
 
 # Example:
 #
@@ -170,11 +261,13 @@ interfaces:
       - presentation
       - event-log
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
-    signal_signature: "Simulation.Events (ReadOnlySpan<SimEvent>, output only, no side effect, valid until next Tick) and Simulation.DrainEvents() (returns the events of the last Tick and marks the buffer drained; call after every Tick); Simulation.DroppedEvents never silent"
+    signal_signature: "Simulation.Events (ReadOnlySpan<SimEvent>, output only, no side effect, valid until next Tick) and Simulation.DrainEvents() (returns the events of the last Tick and marks the buffer drained; call after every Tick); Simulation.DroppedEvents never silent; SimEvent carries ArgA and ArgB and the table of kinds is in ADR-0005; Kill and Spawn of the Core emit no event (ADR-0001 Emenda 18)"
     referenced_by:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
     added: 2026-11-03
-    revised: 2026-11-05
+    revised: 2026-11-06
+    # was (ADR-0001 Emenda 18, 2026-11-06): signal_signature ended with "Simulation.DroppedEvents never silent"
     # was (ADR-0001 amendments, 2026-11-05): signal_signature "Simulation.Events (ReadOnlySpan<SimEvent>, output only, valid until next Tick, drained after every Tick; Simulation.DroppedEvents never silent)"; DrainEvents() added so that an undrained buffer is detectable
   - contract: phase_lifecycle
     status: active
@@ -287,6 +380,155 @@ interfaces:
       - design/gdd/save-local.md
     added: 2026-11-05
     revised: ""
+  - contract: combat_read_view
+    status: active
+    pattern: direct_call
+    producer: combate-6
+    consumers:
+      - horda-7
+      - feedback-12
+    adr: docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    signal_signature: "ICombatReadView (Forja.Gameplay.Sim): read-only ReadOnlySpan properties of length IdCount (EstadoCombate, TimerTicks, CicloIdx, Forma, Raio, OrigemX/Y, DirX/Y, DestinoX/Y, Aberto, Iframes), TicksAteDano(id) and Hero (readonly struct by value); handed over by reference by the compositor; the consumer takes each span once per tick into a local, filters by IsAlive, and the #7 reads the attack state written at the end of the previous tick"
+    referenced_by:
+      - docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-06
+    revised: ""
+  - contract: combat_requests
+    status: active
+    pattern: direct_call
+    producer: "horda-7, skills-8 and fluxo-3"
+    consumers:
+      - combate-6
+    adr: docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    signal_signature: "ICombatRequests (Forja.Gameplay.Sim), implemented by the sealed CombatRequests owned by the #6 and handed over by reference by the compositor to the #7, #8 and #3: Aplicar(ref SimContext ctx, in HitRequest hit) throws if !ctx.CombatActive, only enqueues, and a full queue throws SimInvariantException in both modes; PedirRugido(ref ctx) only the #7, throws if !ctx.CombatActive, idempotent in the tick; Curar(ref ctx, targetId, amount) accumulates in curaPendente and never in the queue; the queue keeps insertion order (Rugido, #8 requests, impacts by attacker id, contacts, hero auto-attack) and is empty at the end of every Step of the #6"
+    referenced_by:
+      - docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-06
+    revised: ""
+  - contract: combat_modifiers
+    status: active
+    pattern: direct_call
+    producer: skills-8
+    consumers:
+      - combate-6
+    adr: docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    signal_signature: "ICombatModifiers (ModDano, ModCadencia), implemented by the #8 with NullCombatModifiers (1, 1) when there is none, read once at the start of the #6 Step; ModDano applies to every hit whose SourceId is the hero; the range checks and the last valid ModCadencia belong to the #6"
+    referenced_by:
+      - docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+      - design/gdd/combate-e-dano.md
+    added: 2026-11-06
+    revised: ""
+  - contract: input_sample
+    status: active
+    pattern: direct_call
+    producer: input-4
+    consumers:
+      - phase-host
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    signal_signature: "InputSample (Forja.Gameplay.Sim.Host struct) handed by value once per frame by the #4 (Presentation) to the PhaseHost: MoveX and MoveY (dead zone applied by the #4; the bridge clamps each axis to +-EixoMax and sends no Move of zero module), TouchGeneration (rises only on a real touch start on the joystick, never on a reset or a cancel; a different value means a new touch), Dodge and Ultimate (pressed this frame), HasPick with PickSerial and PickIndex; the bridge never reads the finger position; the struct only grows at the end. Pending contract: the GDD #4 does not exist yet"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-06
+    revised: ""
+  - contract: attempt_pause_and_end
+    status: active
+    pattern: direct_call
+    producer: app-lifecycle-and-phase-host
+    consumers:
+      - fluxo-de-fase-3
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    signal_signature: "TentativaDeFase.SetPaused(bool) called by the AppLifecycle in its Update when IsPaused changes (ignored in Concluindo and Resolvida), and TentativaDeFase.OnSimulationEnded() called by the PhaseHost in the frame whose tick loop saw Ended (leads to Concluindo); both on the main thread, between ticks and never inside the Tick; only the TentativaDeFase adds and removes the Dialog reason"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - design/gdd/fluxo-de-fase.md
+    added: 2026-11-06
+    revised: ""
+  - contract: phase_log
+    status: active
+    pattern: direct_call
+    producer: host-via-compositor
+    consumers:
+      - event-log-5
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    signal_signature: "IPhaseLog (Forja.Gameplay.Sim.Log, main thread, never throws to the caller): BeginPhase(in LogHeader) before Simulation.Create with the seed, data hash, BuildTag, Abi, SystemsOrder and PreparerOrder; WriteBatch(tick, ReadOnlySpan<SimEvent>) after every DrainEvents and only when events.Length > 0; WriteHashCheckpoint(tick, hash) outside the Tick; WriteCounters(ICounterSource); WriteNote; WriteExternal; EndPhase(in EndInfo, CommitStatus) only after the commit response (also on abandon) and again after a FlushPending; FlushPending() when the app goes to the background with the attempt in Concluindo (copies the used bytes, footer Pending); FlushSession() outside a phase; Flags, RecordsDropped and LogFaults exposed"
+    referenced_by:
+      - docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+      - design/gdd/fluxo-de-fase.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-06
+    revised: ""
+  - contract: counter_source
+    status: active
+    pattern: direct_call
+    producer: counting-systems
+    consumers:
+      - event-log-5
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    signal_signature: "ICounterSource.Collect(ref CounterWriter w) (Forja.Gameplay.Sim.Log; CounterWriter is a ref struct): each system with diagnostics declares its counter ids in its own enum with explicit values that only grows at the end; the host reads them before the Discard; a value that cannot be read is written with Available = 0 (never 0); the Core counters are CommandsRejected, SpawnsRejected, NonFiniteCount and DroppedEvents"
+    referenced_by:
+      - docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-06
+    revised: ""
+  - contract: presentation_sink
+    status: active
+    pattern: direct_call
+    producer: phase-host
+    consumers:
+      - presentation
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    signal_signature: "IPresentationSink.OnTick(int combatTick, ReadOnlySpan<SimEvent> events, ReadOnlySpan<DeathRecord> deaths) (Forja.Gameplay.Sim.View) called by the PhaseHost after every Tick and its DrainEvents, including the tick that ends the phase and before the loop stops; deaths is DeathsThisTick, which the Core clears every tick, so this is the only place to capture it; the sink only copies into fixed-size structures (GhostPool, CardPool) and never draws"
+    referenced_by:
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    added: 2026-11-06
+    revised: ""
+    # pending amendment on ADR-0007 decision 6 step 7: deliver DeathsThisTick, not only the events
+  - contract: effect_clock
+    status: active
+    pattern: direct_call
+    producer: presentation
+    consumers:
+      - presentation-shaders
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    signal_signature: "EffectClock.SimTickF(previous, combatTick, combatHold, alpha) = max(previous, combatTick + (combatHold == 0 ? alpha : 0)), published once per frame with Shader.SetGlobalFloat(_ForjaSimTick); every combat effect computes age = (SimTickF - startTick) / durationTicks in float (highp, never half) from ticks kept on the instance or the card; the Alpha is frozen on pause, so every effect freezes with it"
+    referenced_by:
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    added: 2026-11-06
+    revised: ""
+  - contract: tick_probe
+    status: active
+    pattern: direct_call
+    producer: simulation
+    consumers:
+      - tick-budget-probe
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    signal_signature: "ITickProbe { void Begin(int slot); void End(int slot); } (Forja.Simulation, no UnityEngine); TotalSlot = 0, a system slot is the BudgetLine it declares (1, 2, 3 or 5); Simulation.Tick calls Begin/End for the total and for each ISimSystem.Step; output only, never read by a system, never throws inside the Tick (an unbalanced pair is ignored and counted in ProbeFaults); the hash is identical with NullTickProbe and StopwatchTickProbe"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+      - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+    added: 2026-11-06
+    revised: ""
+    # pending amendment on ADR-0001 Key Interfaces: ISimSystem.BudgetLine and the probe parameter of Simulation.Create
+  - contract: load_level
+    status: active
+    pattern: direct_call
+    producer: load-governor
+    consumers:
+      - presentation
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    signal_signature: "LoadGovernor.Level (Forja.Gameplay.Sim.Budget) returns the LoadLevel of ADR-0009 (Forja.Gameplay.Sim.View: Normal = 0, High = 1); LoadGovernor.Add(dtSeconds) is fed once per frame by the PhaseHost with DtUsed (dt <= 0 ignored); read once per frame by the PresentationDriver in LateUpdate and handed to VfxBudget.Grant; it depends on the real clock, so no tick system, command or game rule reads it, and it never enters the hash or the log as state"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+    revised: ""
+    # pending amendment on ADR-0009 decision 6: the real LoadLevel comes from this ADR, and the text "Alto" becomes "High"
 
 # Example:
 #
@@ -315,7 +557,109 @@ interfaces:
 # Register a budget when an ADR explicitly claims a frame time allocation.
 # The registry lets /architecture-review verify the total doesn't exceed the target.
 
-performance_budgets: []
+performance_budgets:
+  - target_fps: 60
+    status: active
+    total_frame_budget_ms: 12.0
+    platform: Mobile
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "T = active main-thread CPU ms per frame that runs a Tick, p95 (not the wall time of the frame, which vsync pads); the lines below sum to T, L10 included; frame acceptance is p95 <= T - L10 = 9.5 and p99 <= T; PROVISIONAL until the on-device spike (BENCH-HEAVY, Release/IL2CPP, minute 20)"
+    added: 2026-11-06
+    revised: ""
+  - system: combat
+    status: active
+    budget_ms: 2.0
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L1, Tick p95; p99 4.0; worst tick 5.0 (closes GDD #6 orcamento_combate_pior_tick_ms); from GDD #6 AC-P1; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+      - design/gdd/combate-e-dano.md
+    added: 2026-11-06
+    revised: ""
+  - system: horde
+    status: active
+    budget_ms: 0.3
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L2, Tick p95; p99 0.5, also on the roar tick, the escort and 20 births per tick; worst tick 1.0 is only a cap on the maximum; from GDD #7 AC-P1; the Horda.Tick marker is the probe slot of this line; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-06
+    revised: ""
+  - system: phase_flow
+    status: active
+    budget_ms: 0.3
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L3, Tick p95; p99 0.6; worst tick 1.0; GDD #3 xp and level step; a guess of this ADR, provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+      - design/gdd/fluxo-de-fase.md
+    added: 2026-11-06
+    revised: ""
+  - system: sim_core
+    status: active
+    budget_ms: 0.2
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L4, the residual: the total Tick minus the sum of the system slots; p99 0.4; worst tick 0.5; no system declares this line; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+    revised: ""
+  - system: sim_reserve
+    status: active
+    budget_ms: 0.2
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L5, reserve for tick systems that have no GDD yet; p99 0.5; worst tick 0.5; a new system takes its line from here or from L10 by amendment; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+    revised: ""
+  - system: presentation_cpu
+    status: active
+    budget_ms: 2.0
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L6, OnTick, RenderFrameBuilder and the instance texture upload (ADR-0009); p99 3.0; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+    revised: ""
+  - system: engine_render_submit
+    status: active
+    budget_ms: 3.0
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L7, engine, URP and draw submission; measured as the rest, not allocated to our code; p99 4.0; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+    revised: ""
+  - system: ui_hud
+    status: active
+    budget_ms: 1.0
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L8, UI and HUD (GDD #12 and #13, not written yet); p99 1.5; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+    revised: ""
+  - system: other_frame_work
+    status: active
+    budget_ms: 0.5
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L9, entry, audio, log and the rest; p99 1.0; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+    revised: ""
+  - system: thermal_variance_reserve
+    status: active
+    budget_ms: 2.5
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    notes: "L10, not spent: the p99 may consume it; taking from it needs an amendment and the technical-director; provisional"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+    revised: ""
 
 # Example:
 #
@@ -366,6 +710,7 @@ api_decisions:
     reason: "Same-build determinism at the lowest formula cost for the MVP; fixed point is the registered replacement if #22 or #40 need cross-device verification"
     referenced_by:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
+      - docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
     added: 2026-11-03
     revised: 2026-11-05
     # was (ADR-0002, 2026-11-05): not "double, decimal, Unity.Mathematics, UnityEngine.Mathf, Vector3"; the ban on decimal applies only to the simulation state
@@ -461,7 +806,7 @@ api_decisions:
     revised: ""
   - purpose: sim_death_cause
     status: active
-    api: "enum DeathCause { Normal = 0, InvalidValue = 1, Rugido = 2 } with explicit values (they go to the log), growing only at the end; SimWorld.Kill(id, cause) keeps the first cause and ignores a second Kill on the same dead entity in the same tick; the cause lives only in DeathsThisTick, outside the Core hash; the Death event carries no cause (the log and presentation deduce it from the #7 Rugido event)"
+    api: "enum DeathCause { Normal = 0, InvalidValue = 1, Rugido = 2 } with explicit values (they go to the log), growing only at the end; SimWorld.Kill(id, cause) keeps the first cause and ignores a second Kill on the same dead entity in the same tick; the cause lives only in DeathsThisTick, outside the Core hash; the Death event carries the cause in ArgA (ADR-0001 Emenda 18)"
     not: "Hashing the cause in the Core, a switch over DeathCause without a throwing default, a system that acts on the cause without reflecting the effect in its own Hash"
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     reason: "The #6 resolves the typed Rugido request of the #7 and the #3, #8 and #24 read the cause to give half XP (one level at most), skip kill effects and skip loot; the Core only carries the cause"
@@ -469,8 +814,222 @@ api_decisions:
       - docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
       - design/gdd/combate-e-dano.md
       - design/gdd/horda-waves-e-inimigos.md
+      - docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
     added: 2026-11-05
+    revised: 2026-11-06
+    # was (ADR-0001 Emenda 18, 2026-11-06): api ended with "the Death event carries no cause (the log and presentation deduce it from the #7 Rugido event)"
+  - purpose: sim_column_storage
+    status: active
+    api: "Entity columns are arrays of primitives in separate columns (SoA): the SimWorld ones sized EntityCapacity by Create, the #6 tables sized at least EntityCapacity and (re)allocated and cleared in the #6 Preparar; spans and Hash slice by IdCount; enums stored as byte with explicit values, 0 the valid initial state"
+    not: "List<T>, an array of row structs (provisional, revisit if the #6 Tick overshoots orcamento_combate_ms), Entities/DOTS, a second entity table, reallocation after Preparar"
+    adr: docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    reason: "Fixed arrays give spans that stay valid for the whole phase and zero allocation per Tick; clearing in Preparar makes a reused table hash like a new one"
+    referenced_by:
+      - docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    added: 2026-11-06
     revised: ""
+  - purpose: sim_event_table
+    status: active
+    api: "SimEventKind : byte with explicit values (None 0, Damage 1, Death 2, Spawn 3, SkillCast 4, Esquiva 5, Knockback 6, HitStop 7, Rugido 8, HordeTick 9, TelegraphStart 10, HeroDeath 11), only growing at the end; SimEvent carries Tick, Kind, ActorId, TargetId, Value, ArgA and ArgB; each rule event is emitted by the system that decides (the #6 the combat ones, the #7 Rugido and Spawn of elite and boss, the #8 Spawn of individual summons); the horde is aggregated in HordeTick; EventosReservados is reserved by Kind (HeroDeath, TelegraphStart, phase end, offer)"
+    not: "an event per horde body (born, hit or dead), Kill or Spawn of the Core emitting events, reserving by payload content, a switch over SimEventKind without a throwing default"
+    adr: docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    reason: "300 deaths in the Rugido tick must not need 300 events or leak combat vocabulary into the Core; the cause travels in Death.ArgA"
+    referenced_by:
+      - docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+      - design/gdd/combate-e-dano.md
+    added: 2026-11-06
+    revised: ""
+  - purpose: combat_heal_path
+    status: active
+    api: "Combate.Curar(ref ctx, targetId, amount) always accumulates in the curaPendente column, limited to hpMax; the #6 consumes it in 7b before subtracting the damage and only for entities alive at the start of the pass; a dead target is discarded without counting, an id outside [0, IdCount) throws if Strict"
+    not: "a heal entering the hit queue, a heal applied immediately, a curaAcc scratch"
+    adr: docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    reason: "One path for every heal source: it survives CombatHold in the hash and needs no extra queue entry"
+    referenced_by:
+      - docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+      - design/gdd/combate-e-dano.md
+    added: 2026-11-06
+    revised: ""
+  - purpose: sim_vector_type
+    status: active
+    api: "SimVec2 (Forja.Simulation): readonly struct of float X and Y in meters, a by-value view over the X/Y columns of the ADR-0004; operators + - * /, Dot and LenSq; no Length, no == and no Equals; Dir divides each component by the length; every numeric literal of the geometry carries the f suffix"
+    not: "Vector2, Vector3, Unity.Mathematics float2, a SimVec2 stored in an entity table in place of the columns, multiplying by the inverse of the length"
+    adr: docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+    reason: "One vector vocabulary for the #6, #7 and #8; every square root is a visible decision and no float equality can slip into a hit test"
+    referenced_by:
+      - docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+    added: 2026-11-06
+    revised: ""
+  - purpose: sim_geometry_tests
+    status: active
+    api: "SimGeometry hit tests compare squared distances, inclusive: InCircle, InCone (dir unit, half-aperture in (0, 90] degrees by cos2Half computed in decimal at build, Dot >= 0 and Dot squared >= cos2Half times the squared distance), InCapsule through DistSqToSegment (projection clamped to [0, 1], a degenerate segment is a circle); Dir returns (1, 0) below DirEpsSq = 1e-6f and KbDir returns Axis8(id and 7); SimMath.Clamp, Min and Max are plain comparisons"
+    not: "Sqrt to decide a hit, trigonometry or angles, a static array for EIXOS8, Math.Clamp, Math.Min, Math.Max, MathF.Min, MathF.Max, a second epsilon for a null vector"
+    adr: docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+    reason: "Fewer roundings and no transcendental function in the simulation state; the same tests give the same result for the #6, #7 and #8"
+    referenced_by:
+      - docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+      - design/gdd/combate-e-dano.md
+    added: 2026-11-06
+    revised: ""
+  - purpose: sim_spatial_query
+    status: active
+    api: "SimQuery (Forja.Simulation): a linear scan of World.Alive in ascending id order writing into a caller buffer of at least Alive.Length (sized by EntityCapacity once in Preparar, scratch of the caller outside the hash); FactionFilter HostileToHero is Factions[id] != Factions[Phase.HeroId] and AlliedToHero is the same faction without the hero; NearestInCircle swaps only on a strictly smaller distance, so a tie goes to the lowest id; no spatial grid in the MVP"
+    not: "a grid or quadtree without an ADR, Dictionary or HashSet iteration, lists that allocate, a delegate predicate"
+    adr: docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+    reason: "Around 300 alive entities make a scan a few thousand squared distances per tick; the API stays the same when a grid arrives"
+    referenced_by:
+      - docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+      - design/gdd/combate-e-dano.md
+    added: 2026-11-06
+    revised: ""
+  - purpose: frame_loop
+    status: active
+    api: "MonoBehaviour.Update drives the ticks: the AppLifecycle (DefaultExecutionOrder -200, one per app) reconciles the pause and drains the #28 queue, then the PhaseHost (DefaultExecutionOrder -100, one per phase) runs Plan and the tick loop; the presentation reads in LateUpdate; the Input System stays in Dynamic Update"
+    not: "FixedUpdate, a custom PlayerLoopSystem, a coroutine or a callback of the app calling Tick"
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    reason: "The accumulator, MaxTicksPerFrame and the discard of the first dt must be ours and testable in EditMode with a fake clock; FixedUpdate hands them to the engine"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0007, to reassess after the on-device spike): PlayerLoop only if the order of the two hosts is not enough
+  - purpose: real_time_source
+    status: active
+    api: "IFrameClock.RealDeltaSeconds (Forja.Gameplay.Sim.Host), default Time.unscaledDeltaTime read once per frame by the PhaseHost; used only by the TickPacer (FS1 and FS2), never by the simulation; NaN, negative or infinite becomes 0; a Stopwatch-based clock can replace it behind the same interface"
+    not: "Time.timeScale, the scaled Time.deltaTime, Time.fixedDeltaTime or any wall clock inside the Tick or an ISimSystem"
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    reason: "The simulation has no clock (sim_time); the bridge is the only place with real time, behind an interface so a test uses a fake clock and the spike can swap the source (NOT SOURCEABLE in docs/engine-reference)"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0007, Verification Required 3)
+  - purpose: app_lifecycle_signals
+    status: active
+    api: "The AppLifecycle (one per app, bootstrap scene) is the only receiver of OnApplicationPause and OnApplicationFocus: Pause(true) adds AppPaused first and then, outside a phase only, triggers the ADR-0003 pause write inside a try/catch; Focus(false) adds FocusLost and never writes; FocusLost is reconciled with !Application.isFocused at the start of every Update and on Pause(false)"
+    not: "a PhaseHost or any per-phase object receiving the callbacks, Focus as a write trigger, a single bool"
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    reason: "The BeginStage commit, the pause outside a phase and the #28 queue happen before a simulation exists; the order and coverage of the two callbacks on Android are NOT SOURCEABLE, so the set of reasons plus the reconciliation tolerates any order"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+      - design/gdd/fluxo-de-fase.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0007, Verification Required 1, 2 and 4)
+  - purpose: log_format
+    status: active
+    api: "Binary container, little-endian, written field by field with BinaryPrimitives over a local Span: magic FJLG, FormatVersion u16, LogKind u8 (Phase 1, Headless 2, Session 3), header, records Type u8 + Length u16 + payload (EventBatch 1, HashCheckpoint 2, Counters 3, HostNote 4, External 5; an unknown Type is skipped by its Length), footer Type 0xFF with the end result, final hash, CommitStatus, Flags, RecordsWritten, RecordsDropped, LogFaults and an FNV-1a 64-bit checksum; a SimEvent takes 21 bytes (Kind u8, ActorId, TargetId, Value as float bits, ArgA, ArgB) and the Tick lives in the batch; every enum that goes to the file has explicit values and only grows at the end; Phase and Headless logs compare with each other, Session never"
+    not: "text or JSON Lines, MemoryMarshal over SimEvent, WriteSingleLittleEndian, a Span as a class field, a footer written before the commit response, a LogKind in the comparer identity between Phase and Headless"
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    reason: "Exact float bits for the comparer, zero allocation per tick and a checksum that tells a complete file from a truncated one; the text Dump of the reader gives the readability without the cost in the game"
+    referenced_by:
+      - docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0008): the GDD #5 may add record types
+  - purpose: log_storage
+    status: active
+    api: "Two persistent phase buffers (LOG_BUFFER_KB, 1024 provisional) and one session buffer (LOG_SESSION_KB, 64) created at boot by the LogHost; the closed buffer goes to one ThreadPool job per file (QueueUserWorkItem with a cached static readonly WaitCallback and a reusable WriteJob, no closure) that computes the checksum, writes only the used bytes with ISaveStorage.WriteAll to log/name.tmp, then Replace to log/name.fjlog and FsyncDirectory(log/); names fase-, headless- and sessao- plus a seq6 taken by the first boot job (TryList) and then Interlocked; retention in that same job per kind (Phase 50 files and 20000 KB, Headless the same, Session 10 and 1024); shutdown on Application.quitting and on leaving Play Mode waits LOG_SHUTDOWN_WAIT_MS (200) on a pending counter and abandons the rest"
+    not: "a Thread per log, a log write on the main thread, a UnityEngine call in the worker, static mutable state in LogHost or LogWriter, a buffer created per phase, fsync per tick or per batch, storing the log inside the save file"
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    reason: "ADR-0003 forbids the main thread from blocking on the disk; a persistent buffer avoids large-object heap churn; the atomic Replace makes the file whole or absent; ISaveStorage must be safe for two callers (the save thread and the log job), an amendment pending on ADR-0003"
+    referenced_by:
+      - docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+      - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0008, Verification Required 1, 2 and 9): the numbers are guesses until the on-device spike; the GDD #5 may override them
+  - purpose: crowd_render
+    status: active
+    api: "One static Mesh per horde archetype (at most 400 triangles, 1 LOD, up to 12 rigid parts merged, part index in vertex color), one Material of a single shader variant, drawn with Graphics.RenderMeshInstanced and one RenderParams per frame: one LOGICAL draw per type (the engine splits into batches by the device limit, so the real draw count is measured in the spike), worldBounds set once to the playable area with margin, shadowCastingMode Off and receiveShadows false; the matrix goes in a NativeArray of Matrix4x4 and the extra per-instance data (birthTick, deathTick, hitTick, animPhase, deathKind) in a 32-bit float texture of 2 texels per instance read by SV_InstanceID; plan B1 a structured GraphicsBuffer, an optimization (only after the spike proves the shader read) the extra fields after the matrix in the instance struct, last resort RenderMeshIndirect; the array is written in ascending id order after a camera box test on the CPU"
+    not: "SkinnedMeshRenderer, a GameObject, Animator, Collider, particle, decal or sound per horde body, Entities Graphics, the GPU Resident Drawer for the horde, assuming a binding between an extra struct field and an HLSL property before the spike proves it"
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    reason: "The art bible limits the horde to 150 draws overall and forbids skinned meshes; the extra-field read in the shader is not a documented stable contract (NOT SOURCEABLE), so the texture path is primary and works on GLES 3.0"
+    referenced_by:
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/art/art-bible.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0009, Verification Required 1 to 3): trigger, if all paths fail the decision reopens and the #7 teto_vivos_horda is reviewed with the author
+  - purpose: effect_time
+    status: active
+    api: "Combat effects are a function of SimTickF and of ticks stored on the instance or the card; the hit-stop duration (3 ticks) is also measured in SimTickF and freezes with the global clock at CombatHold; UI, menus and the result screen use their own unscaled clock and are outside this rule"
+    not: "_Time, Time.time, Time.deltaTime or Time.timeScale in a combat shader or script, half or fixed precision in an age computation"
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    reason: "Pause, the card-choice menu and CombatHold must freeze every effect with no per-effect code; ticks reach about 36000 at 20 minutes, and half loses the step above 32768"
+    referenced_by:
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - design/gdd/combate-e-dano.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0009): the GDD #6 L412 and L440 say the #12 cancels the hit-stop at CombatHold; this ADR freezes it, an open question for the author
+  - purpose: vfx_pools_and_cut
+    status: active
+    api: "Fixed-size pools created on the loading screen: GhostPool GHOST_POOL_MAX 300 (a death with no slot vanishes at once and adds to GhostPoolOverflow), CardPool ALLY_CARD_MAX 150 for allies and CARD_POOL_MAX 32 for the rest, cards as instanced quads of one Mesh written sorted by startTick; VfxBudget.Grant(request, caps, loadLevel) is a pure function with priority telegraph > hero > elite and boss > allies > horde and the cut in the inverse order (the horde loses flash and dissolve first, then allies lose their oldest cards); telegraph and hero are never cut; LoadLevel stays Normal until the frame-budget ADR defines it"
+    not: "a particle system for combat, a GameObject per card, a cut that touches the telegraph or the hero, a dynamic load level decided here"
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    reason: "GDD #6 fixes the priority when the screen fills; the cut must be testable in EditMode and deterministic"
+    referenced_by:
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+      - design/gdd/combate-e-dano.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0009): overdraw trigger, if it fails reduce ALLY_CARD_MAX and the ally alpha first, then reopen art bible 8.7 with the author
+  - purpose: boss_prewarm
+    status: active
+    api: "PrewarmPlan run by the PrewarmRunner on phase entry (Entrando), in parallel (async IO only) with the BeginStage request and before Simulation.Create: load the boss model, materials and textures; compile the shader variants with ShaderVariantCollection.WarmUp; load the boss LUT Volume profile; draw the boss and the roar disc once off-screen (mandatory, it is the draw that warms the pipeline state); ask the audio to decode the roar clips; the host waits up to PREWARM_MAX_WAIT_MS (3000) after the BeginStage confirmation, then the phase starts anyway, the load continues in the background, the host writes HostNote PrewarmIncomplete and adds to PrewarmIncompleteCount (a failure of AC-P4 in the spike); the runner takes a CancellationToken and may allocate (loading, off the hot path)"
+    not: "loading the boss assets on the roar tick, blocking the phase past the wait ceiling, doing the prewarm inside Preparar (it is synchronous pure C#)"
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    reason: "GDD #7 AC-P4 wants zero synchronous asset loads on the roar tick; Preparar is pure and synchronous while asset loading is asynchronous, so the prewarm moves to phase entry"
+    referenced_by:
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+      - design/gdd/horda-waves-e-inimigos.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0009, Verification Required 7): trigger, if the roar frame fails even with the full prewarm, keep the boss instantiated and hidden from phase entry and reopen decision 8
+    # pending amendment on ADR-0009 section 8 (ADR-0010 decision 6): the load that continues after the ceiling is only the warm-up (shader, off-screen draw, audio); the residency of the assets is mandatory before the first tick
+  - purpose: tick_timing_measure
+    status: active
+    api: "ITickProbe in Forja.Simulation (no UnityEngine) with StopwatchTickProbe in Forja.Gameplay.Sim.Budget reading System.Diagnostics.Stopwatch through ITimestampSource; per-slot accumulation flushed at End(TotalSlot) into a LatencyHistogram of 0.01 ms bins up to 20 ms; results leave only through ICounterSource (ADR-0008). Narrow exception to real_time_source (ADR-0007): the wall clock is read while the Tick runs, but only for output-side measurement, never returned to the simulation"
+    not: "ProfilerMarker inside the simulation (it breaks No Engine References and is stripped in a non-development build); the wall time of the frame as R (vsync pads it, so frame minus Tick is always the same number); a float conversion of Stopwatch ticks; reading the probe or its histograms from a tick system"
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    reason: "The acceptance of GDD #2 P1 is in Release/IL2CPP on the device, where the Profiler is not available, and the log (#5) has to carry the numbers; an interface keeps the simulation assembly free of the engine"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+      - design/gdd/simulacao-deterministica.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0010, Verification Required 1): the probe must cost at most 0.05 ms at p95; if not, it stays only in the spike
+  - purpose: load_signal
+    status: active
+    api: "LoadGovernor fed by DtUsed (the dt after the NaN, negative, infinite and first-dt-discard handling, before the dt_ef clamp of FS1): a frame is missed when dt > 1.5 x 1/60 s; windows of 2 s; Normal -> High at >= 10% missed in 2 windows in a row; High -> Normal at <= 2% in 5 windows in a row; floor breach counted in High when more than 5% of the frames pass 36.7 ms. The FrameTimingManager replaces the dt only as plan B"
+    not: "the Adaptive Performance package as the signal; any simulation-side use of the level; cutting or skipping simulation work for performance"
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    reason: "The dt is already read by the bridge and costs no dependency; the level only changes what the presentation draws, so determinism is untouched"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+      - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0010, Verification Required 3): trigger, if the dt does not show a lost frame on the device, switch the signal to the FrameTimingManager without changing the rule
+  - purpose: frame_rate_target
+    status: active
+    api: "Application.targetFrameRate = 60 and QualitySettings.vSyncCount = 0 set in the bootstrap, with Optimized Frame Pacing on in the Android Player Settings (NOT SOURCEABLE in docs/engine-reference)"
+    not: "leaving the Android default (it can fall to 30 fps, so every frame would count as missed and the LoadGovernor would stay in High)"
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    reason: "The missed-frame rule and T assume a 60 fps target; a 90 Hz screen alternates 11 and 22 ms at 60 fps, and the rate for that case is still open"
+    referenced_by:
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+    revised: ""
+    # provisional (ADR-0010, Verification Required 2): measure on the reference device, including a 90 Hz screen
 
 # Example:
 #
@@ -505,10 +1064,12 @@ forbidden_patterns:
     added: 2026-11-03
   - pattern: event_as_inter_system_channel
     status: active
-    description: "Simulation events are output only. A system must not read events emitted in the same tick as a channel to another system; internal communication goes through SimWorld."
+    description: "Simulation events are output only. A system must not read events emitted in the same tick as a channel to another system; internal communication goes through SimWorld, with the only exception of the three direct channels of ADR-0001 Emenda 18 (the consumer request queue, the hashed accumulator written only by its owner, the read-only view), always handed over by the compositor by reference and never by event."
     why: "Subscription or emission order must never become a rule; the fixed system order and shared state keep ticks reproducible."
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     added: 2026-11-03
+    revised: 2026-11-06
+    # was (ADR-0001 Emenda 18, 2026-11-06): description "Simulation events are output only. A system must not read events emitted in the same tick as a channel to another system; internal communication goes through SimWorld."
   - pattern: mutable_static_in_simulation
     status: active
     description: "Forja.Simulation, Forja.Data (and its editor assembly), Forja.Gameplay.Sim (compositor and systems, including the #3), the data loader in Forja.Gameplay, the bridge, Forja.Save and the Android storage adapter in Forja.Gameplay (which keeps the writer thread) must not hold mutable static state, including static events, static caches (editor menu caches too) and RuntimeInitializeOnLoadMethod; stream tables, SimMath and lookup tables are immutable; Simulation.Create is a static factory with no static field."
@@ -567,6 +1128,176 @@ forbidden_patterns:
     why: "A generator cached across ticks and left out of the hash breaks replay without any error; the #7 draws the whole composition in Preparar precisely so no wave generator crosses ticks."
     adr: docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md
     added: 2026-11-05
+  - pattern: scratch_surviving_tick
+    status: active
+    description: "Per-tick scratch of the #6 (golpe queue, acc, the Rugido signal, vivoNoInicio, intentVel) must be empty at the end of every Step, including the early return without CombatActive, and must be rewritten before it is read in the next tick."
+    why: "Scratch stays out of the hash, so any scratch that survives a tick is hidden state that breaks replay without any error."
+    adr: docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    added: 2026-11-06
+    revised: 2026-11-06
+    # was (ADR-0005 sync note, 2026-11-06): description listed curaAcc among the scratch; the heal has no scratch
+  - pattern: column_realloc_in_phase
+    status: active
+    description: "No entity column array (SimWorld or the #6 tables) may be reallocated, resized or swapped after Preparar; the only reallocation allowed is the one in the #6 Preparar when Length is below EntityCapacity."
+    why: "Spans taken at the start of a Step must stay valid for the whole tick, and a reallocation would also drop the zero initial state the hash relies on."
+    adr: docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    added: 2026-11-06
+  - pattern: writable_column_exposure
+    status: active
+    description: "No writable Span of a private column of the #6 may leave the #6, and HpAndPosForWrite must be called only by the #6; the read view exposes ReadOnlySpan only."
+    why: "The single-writer rule for HP, position and combat state is what keeps the hash order independent of system wiring; the Tick guard cannot tell callers apart."
+    adr: docs/architecture/adr-0004-colunas-do-simworld-combate-e-horda.md
+    added: 2026-11-06
+  - pattern: core_emits_rule_event
+    status: active
+    description: "SimWorld.Kill, SimWorld.Spawn and any other Core code must not emit rule events (Death, Spawn, Damage and the like); the system that decides emits them."
+    why: "A Core event per death or per spawn makes 300 deaths in one tick 300 events and ties the Core to the combat vocabulary and to which classes are aggregated."
+    adr: docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    added: 2026-11-06
+  - pattern: kill_outside_combat
+    status: active
+    description: "Only the #6 (and the Core on the non-finite value path) may call SimWorld.Kill; no other system may kill an entity."
+    why: "With Kill emitting no event, a second caller would produce a death without its event and without the cause rules of the #6."
+    adr: docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    added: 2026-11-06
+  - pattern: request_queue_reorder
+    status: active
+    description: "The #6 request queue must not be sorted, deduplicated, merged or summed out of insertion order, and a request must not carry a precomputed modDano."
+    why: "The float32 sum per target depends on the order and the order is part of the contract (Rugido, #8, impacts by attacker id, contacts, auto-attack); one source for modDano keeps F1 single-valued."
+    adr: docs/architecture/adr-0005-pipeline-de-dano-e-eventos-de-combate.md
+    added: 2026-11-06
+  - pattern: float_equality_on_geometry
+    status: active
+    description: "No == or Equals between float values or SimVec2 in the simulation; two vectors are told apart by an integer (the vector class id of the #7), never by float equality."
+    why: "Float equality is fragile to a single ulp and would change a hit, a mirror or a tie without any error."
+    adr: docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+    added: 2026-11-06
+  - pattern: sqrt_to_decide_hit
+    status: active
+    description: "A hit, reach, contact, suppression or range test must not use Sqrt; it compares squared distances (Sqrt is only for Dir, a hand-written length and the stopping step of the #6)."
+    why: "A square root adds a rounding and a cost with no change in the logical result."
+    adr: docs/architecture/adr-0006-vetor-geometria-e-consulta-espacial-deterministicos.md
+    added: 2026-11-06
+  - pattern: time_scale_for_pause
+    status: active
+    description: "Time.timeScale must not be used for the pause or for slow motion: the pause is zero calls to Tick and slow motion is the discard of the FS1 excess; Time.timeScale stays 1 (asserted in development)."
+    why: "The accumulator uses real unscaled time, so the scale would be inconsistent, it would freeze the animations and audio that the pause menu needs, and it would skip instead of slowing down."
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    added: 2026-11-06
+  - pattern: tick_outside_host_update
+    status: active
+    description: "Simulation.Tick must be called only from the Update of the PhaseHost, on the main thread, with Status Running; never from a callback of the app, FixedUpdate, LateUpdate or a coroutine."
+    why: "A tick during a pause or inside a callback breaks the zero-ticks-in-pause guarantee and the single-thread rule of the Core."
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    added: 2026-11-06
+  - pattern: focus_as_save_trigger
+    status: active
+    description: "OnApplicationFocus must never trigger a save write; only OnApplicationPause(true) does, outside a phase only. Focus lost is a pause reason (FocusLost) that stops the ticks and writes nothing."
+    why: "Focus also fires for a notification or a floating window and would write for nothing; ADR-0003 forbids Focus for the save and the GDD #2 needs it only to stop the ticks."
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    added: 2026-11-06
+  - pattern: bridge_clock_in_tick_systems
+    status: active
+    description: "A system called by ISimSystem.Step must not reference IFrameClock, TickPacer or PauseGate; the code with a real clock lives in Forja.Gameplay.Sim.Host, a namespace apart from the tick systems in the same assembly."
+    why: "Only a convention separates real-time code from tick code inside one asmdef; a reference would put wall time into the deterministic simulation."
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    added: 2026-11-06
+  - pattern: pause_as_bool
+    status: active
+    description: "The pause must not be reduced to a bool: it is a set of reasons (PauseReason flags) and the game resumes only when the set is empty."
+    why: "Focus and app pause arrive together and in either order, and the abandon dialog must keep the pause after the focus returns; a bool resumes too early."
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    added: 2026-11-06
+  - pattern: sim_references_log
+    status: active
+    description: "Forja.Simulation and any system called by ISimSystem.Step must not reference Forja.Gameplay.Sim.Log or read the log, not even to decide a rule; only the host feeds the log with what DrainEvents returns."
+    why: "Events are output only; a system reading the log would make the order of subscription a rule, and the two namespaces share one assembly, so only a code review rule separates them."
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    added: 2026-11-06
+  - pattern: log_throws_into_game
+    status: active
+    description: "No exception of the log may reach the tick loop, the TentativaDeFase or the UI, and the log must never block the main thread on the disk; every public method of the PhaseLog and the LogWriter catches, adds to LogFaults and sets Degraded, and the try/catch is the outermost one of the worker callback."
+    why: "An unhandled exception in a ThreadPool item brings the process down, and a telemetry failure must not cost the player a phase."
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    added: 2026-11-06
+  - pattern: silent_log_loss
+    status: active
+    description: "A log record must not be dropped without adding to RecordsDropped and setting Truncated, and a log fault must not pass without adding to LogFaults and setting Degraded; both go into the file footer."
+    why: "A silent loss makes a truncated log read as a complete one, and the acceptance would count a phase that the log did not see."
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    added: 2026-11-06
+  - pattern: comparer_diverges_when_not_comparable
+    status: active
+    description: "LogComparer must not answer Divergence for a pair that is not comparable, and must not treat an empty or unknown Abi or BuildTag, a missing final hash or a Pending commit as equal; it answers NotComparable with the reason. A divergence found before the missing hash still stands."
+    why: "GDD #2 says a pair with a different ABI, build tag or data hash is not comparable; an absent value read as permissive would pass a comparison that never ran."
+    adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    added: 2026-11-06
+  - pattern: presentation_writes_sim
+    status: active
+    description: "The presentation must never write to the simulation, call Tick, Spawn or Kill, or keep state that enters the hash or the log as game state; it only reads spans, views and drained events."
+    why: "A render-side write would change the hash with no error, and the simulation must stay deterministic and runnable headless."
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+  - pattern: sim_references_presentation
+    status: active
+    description: "Forja.Simulation and any system called by ISimSystem.Step must not reference Forja.Gameplay.Sim.View or Forja.Gameplay.Presentation."
+    why: "Sim.View shares an assembly with the tick systems, so only a code review rule separates them; a separate assembly that references the Sim and is not referenced by it would make it a compile error (a pending project decision)."
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+  - pattern: effect_uses_real_time
+    status: active
+    description: "A combat shader or script must not read _Time, Time.time, Time.deltaTime or Time.timeScale, and an age computation must not use half or fixed precision; every effect is a function of SimTickF in float."
+    why: "Pause, the card-choice menu and CombatHold would not freeze the effect, and half loses the step above 32768 ticks, about 18 minutes."
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+  - pattern: skinned_horde
+    status: active
+    description: "A horde body must not have a SkinnedMeshRenderer, a GameObject, an Animator, a Collider, a particle, a decal or a sound of its own; the horde is drawn only by the instanced draw."
+    why: "300 renderers and animators would blow the CPU and the 150-draw ceiling of the art bible; any per-body effect is forbidden by the GDD #7."
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+  - pattern: deaths_read_after_tick
+    status: active
+    description: "DeathsThisTick must not be read from the LateUpdate or any place other than IPresentationSink.OnTick, which the PhaseHost calls after every Tick including the one that ends the phase."
+    why: "The Core clears the list every tick; a frame that runs several ticks would lose every death but the last."
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+  - pattern: prewarm_blocks_phase
+    status: active
+    description: "The boss prewarm must not hold the phase past PREWARM_MAX_WAIT_MS, and must not be done inside Preparar; after the ceiling the phase starts, the load continues and PrewarmIncomplete is logged."
+    why: "A prewarm that hangs would cost the player a phase, and Preparar is synchronous pure C# that cannot wait for asynchronous loading."
+    adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
+    added: 2026-11-06
+  - pattern: sim_reads_realtime_measure
+    status: active
+    description: "No tick system, command or game rule may read ITickProbe, a LatencyHistogram, the LoadGovernor level, a frame time or any other real-time measure; the probe and the governor are output only, and the LoadLevel never enters the hash or the log as state."
+    why: "A measure that depends on the real clock would make the simulation depend on the device; the narrow exception to real_time_source is measurement that never returns to the simulation."
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+  - pattern: perf_degrades_simulation
+    status: active
+    description: "Performance must never degrade the simulation: no skipped tick, no changed tick rate, no fewer enemies or changed phase content at run time. The game slows only through MaxTicksPerFrame (and k x X1_p99 + R_p95 <= 33.3 ms must hold); only the presentation cuts, through the LoadLevel."
+    why: "GDD #2 rule 11: the game slows down and never skips or changes the content of the phase for performance; a device-dependent simulation breaks the seed and the hash."
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+  - pattern: system_without_budget_line
+    status: active
+    description: "An ISimSystem must declare a valid BudgetLine (L1, L2, L3 or L5) and Simulation.Create throws otherwise; no system takes frame time without a line in the FrameLedger, and the sum of the p95 of the lines must stay at or below T."
+    why: "Without a line the sum can pass T with nothing to flag it, and a slot taken from the list position would swap lines when the list is reordered."
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+  - pattern: alloc_after_first_tick
+    status: active
+    description: "Every phase allocation (SimWorld arrays, the instance texture, pools, histograms, log buffers) happens inside the phase entry window; none after the first Tick, and GcCollections must be 0 in a steady phase."
+    why: "A collection in the middle of a phase blows the frame, and incremental GC does not avoid it; allocations that escape usually come from the engine, so the invariant is measured in Release."
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
+  - pattern: sync_load_in_phase
+    status: active
+    description: "No synchronous load, no Resources.Load, no WaitForCompletion and no asset load after the first Tick; the mandatory assets of the phase are resident before it, and a phase never starts with a mandatory asset still loading (the entry fails at ENTRY_MAX_MS)."
+    why: "deprecated-apis.md bans Resources.Load and synchronous loading; a late load costs a frame on the hot path and breaks the zero-allocation rule."
+    adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-06
 
 # Example:
 #

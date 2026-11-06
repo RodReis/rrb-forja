@@ -420,7 +420,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
 <!--DADOS:INICIO-->
 <script id="dados" type="application/json">
 {
- "gerado_em": "2026-11-05",
+ "gerado_em": "2026-11-06",
  "geral": 12,
  "fase_agora": 2,
  "fases": [
@@ -497,7 +497,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
     ],
     [
      "doing",
-     "Decisões técnicas (ADRs): 3 escritas, 0 aceitas"
+     "Decisões técnicas (ADRs): 10 escritas, 0 aceitas"
     ],
     [
      "done",
@@ -1107,9 +1107,9 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
    "status": "Proposed",
    "resumo": "Como o combate é calculado para a mesma partida dar sempre o mesmo resultado, 30 vezes por segundo. Base de tudo.",
    "falta": [
-    "Emenda com os pontos da revisão de arquitetura",
     "Testes técnicos (spikes)",
-    "Nova revisão independente"
+    "Nova revisão independente (/architecture-review em sessão limpa)",
+    "Aceitar a decisão (accept)"
    ]
   },
   {
@@ -1132,6 +1132,55 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
     "Os ADRs 1 e 2 aceitos antes",
     "Mover os arquivos de backup do Android para o lugar certo"
    ]
+  },
+  {
+   "n": "0004",
+   "titulo": "Colunas do SimWorld para combate e horda",
+   "status": "Proposed",
+   "resumo": "",
+   "falta": []
+  },
+  {
+   "n": "0005",
+   "titulo": "Pipeline de dano e eventos de combate",
+   "status": "Proposed",
+   "resumo": "",
+   "falta": []
+  },
+  {
+   "n": "0006",
+   "titulo": "Vetor, geometria e consulta espacial determinísticos",
+   "status": "Proposed",
+   "resumo": "",
+   "falta": []
+  },
+  {
+   "n": "0007",
+   "titulo": "Ponte de entrada, tempo e ciclo de vida do app",
+   "status": "Proposed",
+   "resumo": "",
+   "falta": []
+  },
+  {
+   "n": "0008",
+   "titulo": "Log de eventos e instrumentação do #5",
+   "status": "Proposed",
+   "resumo": "",
+   "falta": []
+  },
+  {
+   "n": "0009",
+   "titulo": "Render de multidão e VFX em mobile",
+   "status": "Proposed",
+   "resumo": "",
+   "falta": []
+  },
+  {
+   "n": "0010",
+   "titulo": "Orçamento de frame",
+   "status": "Proposed",
+   "resumo": "",
+   "falta": []
   }
  ],
  "numeros": {
@@ -1139,7 +1188,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
   "total": 40,
   "mvp_feitos": 6,
   "mvp_total": 19,
-  "adrs": 3,
+  "adrs": 10,
   "adrs_aceitos": 0,
   "epicos": 0,
   "historias": 0,
@@ -1147,7 +1196,7 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
   "rodadas": 11,
   "revisados": 6,
   "aprovados": 0,
-  "git": 30,
+  "git": 19,
   "codigo": 0
  },
  "textos": {
@@ -1213,7 +1262,8 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
      "Combate (#6) revisado: 6 decisões de jogo tomadas (esquiva no limite, punição, alvo do ataque, oferta de carta, golpes aguentados, kite) e 8 bloqueios técnicos corrigidos; falta corrigir 1 critério (hash igual no PC e no celular) e o re-review.",
      "Horda, waves e inimigos (#7) escrito e revisado 2 vezes.",
      "Revisão da arquitetura (2 passadas): reprovada por enquanto. Faltam 3 decisões técnicas para combate e horda, e nenhuma das 3 decisões está aceita. 125 requisitos rastreados.",
-     "Checagem de consistência: 1 conflito achado e corrigido (a oferta de carta do rugido do chefe abre na hora, como as outras)."
+     "Checagem de consistência: 1 conflito achado e corrigido (a oferta de carta do rugido do chefe abre na hora, como as outras).",
+     "Emendas da Horda (#7) aplicadas no Combate (#6) e na Simulação (#2); 1ª decisão técnica (ADR-0001) emendada pela 3ª vez (causa de morte do rugido e sorteio da horda na preparação). Segue como proposta, sem conflito aberto no registro."
     ]
    }
   ],
@@ -1223,9 +1273,9 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
     "sub": "Em andamento ou imediato",
     "itens": [
      "<b>Corrigir 1 critério do Combate (#6)<\/b> (o do hash igual no PC e no celular) e fazer o re-review em sessão limpa (/clear); nova revisão do Fluxo de fase (#3).",
-     "<b>Emendar a 1ª decisão técnica (ADR-0001)<\/b> com os pontos da revisão de arquitetura (ficha da fase, nascimento e morte das entidades, eventos do rugido).",
+     "<b>Nova revisão da arquitetura<\/b> em sessão limpa (/clear), já com o ADR-0001 emendado (causa de morte do rugido e sorteio da horda na preparação).",
      "<b>Atualizar o #1<\/b> com as regras de validação e os valores novos do combate.",
-     "<b>Salvar o trabalho no git<\/b> (commit): há 30 arquivos e pastas com mudanças ainda sem commit."
+     "<b>Salvar o trabalho no git<\/b> (commit): há 19 arquivos e pastas com mudanças ainda sem commit."
     ]
    },
    "seguida": {
@@ -1253,9 +1303,9 @@ footer .wrap{border-top:1px solid var(--line);padding-top:22px;display:flex;just
   },
   "atencao": [
    "O <b>celular de referência<\/b> (para medir desempenho) ainda não foi verificado. Sem ele não dá para aceitar as decisões técnicas.",
-   "As 3 decisões técnicas dependem umas das outras e das <b>revisões independentes<\/b>: 0 aceitas até agora. Elas travam a criação das histórias.",
+   "As 10 decisões técnicas dependem umas das outras e das <b>revisões independentes<\/b>: 0 aceitas até agora. Elas travam a criação das histórias.",
    "A <b>revisão da arquitetura reprovou<\/b> por enquanto: combate e horda ainda não têm as decisões técnicas dos dados, do dano e da geometria.",
-   "Há <b>30 arquivos e pastas sem commit<\/b>: se algo der errado no computador, o trabalho recente pode se perder."
+   "Há <b>19 arquivos e pastas sem commit<\/b>: se algo der errado no computador, o trabalho recente pode se perder."
   ],
   "ajuda_atualizar": "Atualiza sozinho (hook do Claude Code) e com: python dashboard/atualizar.py"
  }
