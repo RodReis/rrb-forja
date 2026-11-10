@@ -12,7 +12,7 @@
 
 O Fluxo de fase (#3) é o regente de cada tentativa de fase: ele sabe em que ponto a fase está, conta o XP e o nível do herói, avisa a oferta de cartas a cada level-up, decide se o jogador venceu ou perdeu e cuida do retry. O jogador sente o ritmo da fase, a pausa a cada level-up e a clareza do resultado, inclusive quando o Android fecha o app no meio (a fase se perde, mas não vira derrota). Ele existe para que o teste sem tela e o auto-battle joguem uma fase inteira sob as mesmas regras, para que "morte de fase" seja contada de um jeito só (o critério do Tank) e para que o Grimório registre uma skill ao vencer o chefe sem que o #3 o conheça.
 
-> **Quick reference** — Layer: `Core` · Priority: `MVP` · Key deps: `#1 Dados e balanceamento, #2 Simulação determinística, #6 Combate e dano, #28 Save local; #7 Horda (contrato provisório, sem GDD)`
+> **Quick reference** — Layer: `Core` · Priority: `MVP` · Key deps: `#1 Dados e balanceamento, #2 Simulação determinística, #6 Combate e dano, #28 Save local; #7 Horda, waves e inimigos (GDD em revisão; o contrato do #3 está cumprido)`
 >
 > **Referência de engine** — Unity 6.3 LTS, domínio `Core`: **não há módulo para esse domínio** em `docs/engine-reference/unity/modules/` (só animação, áudio, input, navegação, rede, física, render e UI), então a viabilidade não foi checada contra a engine fixada. O ciclo de vida do Android é `NOT SOURCEABLE` (OQ-9).
 
@@ -91,7 +91,8 @@ Parte do trabalho acontece **dentro do tick**, como um sistema da simulação na
 
 6. **XP e nível.**
    - **O XP é direto na morte do inimigo** *(decisão do autor, 2026-11-04)*. O orbe de XP é só um efeito visual que voa até o herói (apresentação, #12), nunca uma entidade: orbe como entidade dobraria a conta de spawns da fase (ids nunca se reutilizam) e pesaria no aparelho com 300 ou mais inimigos. Isso **muda a linha 120 do conceito** ("coleta orbes de XP"), que está congelado; a emenda fica anotada em Open Questions.
-   - O XP do tick é a soma do `xpDaMorte` dos inimigos mortos **neste tick**, em ordem crescente de índice. Mortes por valor inválido (Regra 9 do #2) não dão XP. O `xpDaMorte` é declarado pelo #7 por arquétipo e entra no `SimWorld` como coluna inteira *(provisória; exige ADR do #6 e do #7)*.
+   - O XP do tick é a soma do `xpDaMorte` dos inimigos mortos **neste tick com causa normal**, em ordem crescente de índice (as mortes com causa `Rugido` têm regra própria, no marcador seguinte). Mortes por valor inválido (Regra 9 do #2) não dão XP. O `xpDaMorte` é declarado pelo #7 por arquétipo e entra no `SimWorld` como coluna inteira *(provisória; exige ADR do #6 e do #7)*.
+   - **XP do rugido** *(emenda (b) do #7, 2026-11-06; provisória, a reavaliar)*. As mortes com causa `Rugido` (a horda e o elite vivos quando o chefe entra, Regra 10.2 do #7) **não** entram no `xp_do_tick` normal: valem um total à parte do tick, `xp_rugido_do_tick = floor(Σ xpDaMorte × xp_rugido_permil / 1000)`, calculado uma só vez, sem arredondar morte a morte (F2). O XP normal do tick entra primeiro; o do rugido entra depois e sobe **no máximo `niveis_rugido_max` (1) nível**, e o excedente se perde (F3). `xp_rugido_permil` e `niveis_rugido_max` são knobs do #7, validados pelo #1 e lidos pelo #3 no snapshot. Se o tick termina a fase (o herói morre no tick em que o chefe nasce), o XP do rugido se perde como todo XP de tick de fim (Regra 5.4).
    - O nível **zera a cada tentativa**: as skills de dentro da fase são temporárias. O XP em excesso passa ao nível seguinte. Existe um **teto de nível** (knob do #1); no teto, o excedente é descartado, `XpAtual` vale 0 (para o hash ser canônico) e não há mais level-up. O XP do tick é somado inteiro **antes** do laço de nível (F2 e F3). O XP e os level-ups continuam durante o chefe.
    - **Forma da curva.** Crescente, com o primeiro level-up cedo para a primeira escolha chegar logo. Os números são knobs do #1 e entram em Formulas.
    - **Ritmo.** A intenção, a calibrar no protótipo: o número de level-ups numa fase fica **abaixo do pool `P = P_f + P_c` de skills ativas da função** (5 de função mais 5 compartilhadas, 10 no MVP), para que uma tentativa não consiga todas e o Grimório não vire "quase tudo" (o erro que o protótipo já mostrou). Isso é uma **checagem de setup do #1** (F5), não só intenção *(provisória; a faixa de X a Y level-ups é pergunta de calibração, OQ-5)*.
@@ -245,15 +246,19 @@ The xp_do_tick formula is defined as:
 
 `xp_do_tick = Σ xpDaMorte[i]`, somado sobre as mortes **deste tick** com causa normal, em ordem crescente de índice
 
+`xp_rugido_do_tick = floor(Σ xpDaMorte[i] × xp_rugido_permil / 1000)`, somado sobre as mortes **deste tick** com causa `Rugido` (a divisão é feita uma vez, no fim, nunca morte a morte)
+
 **Variables:**
 | Variable | Type | Range | Source | Description |
 |----------|------|-------|--------|-------------|
 | xpDaMorte[i] | int | ≥ 0 | data file (#7 declara por arquétipo, #1 valida) | XP do arquétipo morto |
 | mortes | lista | 0 a a capacidade da lista de vivos | calculated | mortos do tick, por índice crescente |
 | xp_do_tick | long | 0 a `capacidade de vivos × max(xpDaMorte)` | calculated | XP somado no tick |
+| xp_rugido_permil | int | 0 a 1000 (padrão 500) | data file (#7 declara, #1 valida) | fração do XP das mortes pelo rugido |
+| xp_rugido_do_tick | long | 0 a `capacidade de vivos × max(xpDaMorte)` | calculated | XP das mortes com causa `Rugido` neste tick, já com o permil aplicado |
 
-**Output Range:** em `long` nunca estoura, porque cada entidade morre no máximo uma vez. Uma morte por **valor inválido** (Regra 9 do #2) vale 0 e não é erro; para isso o #3 precisa saber a **causa** da morte, então a lista de mortos do `SimWorld` (`DeathsThisTick`) a marca. `xpDaMorte < 0` é recusado no setup do #1 e de novo no `Preparar`, antes do tick 0, sem clamp em runtime e sem checagem dentro do tick. A soma de inteiros não depende da ordem; a ordem crescente só importa se algo emitir um evento por morte. A soma é feita **inteira antes** do laço de nível (F3).
-**Example (ilustrativo):** mortes de 2, 2 e 5 XP e uma morte por valor inválido: `xp_do_tick` = 9.
+**Output Range:** em `long` nunca estoura, porque cada entidade morre no máximo uma vez. Uma morte por **valor inválido** (Regra 9 do #2) vale 0 e não é erro; para isso o #3 precisa saber a **causa** da morte, então a lista de mortos do `SimWorld` (`DeathsThisTick`) a marca. `xpDaMorte < 0` é recusado no setup do #1 e de novo no `Preparar`, antes do tick 0, sem clamp em runtime e sem checagem dentro do tick. A soma de inteiros não depende da ordem; a ordem crescente só importa se algo emitir um evento por morte. Cada total é somado **inteiro antes** do laço de nível (F3). O `xp_rugido_do_tick` usa `long` e uma só divisão no fim, para o Enxame de XP 1 não render 0 morte a morte; mortes por valor inválido valem 0 nos dois totais.
+**Example (ilustrativo):** mortes de 2, 2 e 5 XP e uma morte por valor inválido: `xp_do_tick` = 9. Rugido sobre 3 corpos de 1 XP com `xp_rugido_permil` = 500: `floor(3 × 500 / 1000)` = **1** (arredondar morte a morte daria 0).
 
 ### F3. Laço de nível
 
@@ -263,6 +268,11 @@ The laco_de_nivel formula is defined as:
 xp = XpAtual + xp_do_tick                                  (long)
 enquanto Nivel < nivel_max E xp ≥ limiar_xp(Nivel):
     xp -= limiar_xp(Nivel); Nivel += 1; NiveisGanhos += 1
+xp += xp_rugido_do_tick                                    (depois do XP normal)
+passos = 0
+enquanto Nivel < nivel_max E passos < niveis_rugido_max E xp ≥ limiar_xp(Nivel):
+    xp -= limiar_xp(Nivel); Nivel += 1; NiveisGanhos += 1; passos += 1
+se Nivel < nivel_max E xp ≥ limiar_xp(Nivel): xp = limiar_xp(Nivel) − 1   (excedente do rugido perdido)
 se Nivel == nivel_max: xp = 0                              (descarte do excedente)
 XpAtual = (int) xp
 ```
@@ -274,9 +284,11 @@ XpAtual = (int) xp
 | XpAtual | int | 0 a `limiar_xp(Nivel)` − 1; 0 no teto | calculated | XP dentro do nível |
 | NiveisGanhos | int | 0 a `nivel_max` − 1 | calculated | contador que o #16 lê (Regra 6) |
 | xp_do_tick | long | F2 | calculated | XP que entra no tick |
+| xp_rugido_do_tick | long | F2 | calculated | XP das mortes com causa `Rugido`; entra depois do XP normal, com limite de níveis |
+| niveis_rugido_max | int | 1 a 3 (padrão 1) | data file (#7 declara, #1 valida) | máximo de níveis que o XP do rugido sobe; o excedente se perde |
 
-**Output Range:** cada passo gasta ao menos `xp_base ≥ 1`, então o laço faz no máximo `nivel_max − 1` passos. Invariantes: fora do teto, `XpAtual < limiar_xp(Nivel)`; **no teto, `XpAtual = 0`**, para o hash ser canônico (o excedente descartado nunca fica guardado); e `NiveisGanhos = Nivel − 1` em toda tentativa (o contador é o contrato com o #16, e um teste verifica a igualdade). O #16 pode receber até `nivel_max − 1` ofertas em fila num único tick.
-**Example (ilustrativo):** Nivel 3, `XpAtual` 20, `xp_do_tick` 60 → xp = 80; gasta 26 (sobra 54, Nivel 4); gasta 37 (sobra 17, Nivel 5); 17 < 50, para. Resultado: Nivel 5, `XpAtual` 17, `NiveisGanhos` +2. **No teto** (`nivel_max` = 10): Nivel 9, `XpAtual` 100, `xp_do_tick` 50 → xp = 150; gasta 122 (Nivel 10, o teto); `XpAtual` = 0 e os 28 de sobra são descartados.
+**Output Range:** cada passo gasta ao menos `xp_base ≥ 1`, então o laço faz no máximo `nivel_max − 1` passos. Invariantes: fora do teto, `XpAtual < limiar_xp(Nivel)`; **no teto, `XpAtual = 0`**, para o hash ser canônico (o excedente descartado nunca fica guardado); e `NiveisGanhos = Nivel − 1` em toda tentativa (o contador é o contrato com o #16, e um teste verifica a igualdade). O #16 pode receber até `nivel_max − 1` ofertas em fila num único tick. **Limite do rugido** *(emenda (b) do #7, 2026-11-06; provisória, a reavaliar)*: o XP normal do tick entra primeiro, sem limite; o do rugido entra depois e sobe no máximo `niveis_rugido_max` níveis. O que sobra além disso é cortado em `limiar_xp(Nivel) − 1`: perde-se só o XP que pagaria mais níveis, o progresso parcial fica, a invariante `XpAtual < limiar` vale e nenhum estado novo entra no hash. Sem rugido (`xp_rugido_do_tick` = 0) o segundo laço não roda e o resultado é o do laço único anterior.
+**Example (ilustrativo):** Nivel 3, `XpAtual` 20, `xp_do_tick` 60 → xp = 80; gasta 26 (sobra 54, Nivel 4); gasta 37 (sobra 17, Nivel 5); 17 < 50, para. Resultado: Nivel 5, `XpAtual` 17, `NiveisGanhos` +2. **No teto** (`nivel_max` = 10): Nivel 9, `XpAtual` 100, `xp_do_tick` 50 → xp = 150; gasta 122 (Nivel 10, o teto); `XpAtual` = 0 e os 28 de sobra são descartados. **Rugido** (limiares 37 no Nivel 4 e 50 no Nivel 5, `niveis_rugido_max` = 1): Nivel 4, `XpAtual` 30, `xp_do_tick` 0, `xp_rugido_do_tick` 200 → xp = 230; gasta 37 (sobra 193, Nivel 5, 1 passo); o limite de 1 nível para; 193 ≥ 50, então corta em 49. Resultado: Nivel 5, `XpAtual` 49, `NiveisGanhos` +1, 144 de XP perdidos.
 
 ### F4. Derrota por tempo e chefe ausente
 
@@ -358,6 +370,8 @@ Cada caso diz a condição exata e o resultado exato. O que o #2 e o #28 já res
 ### XP e nível
 
 - **Se morre o herói, um aliado ou uma invocação** (facção não inimiga): dá 0 XP. Só a morte de inimigo com causa normal soma (F2).
+- **Se o rugido dá XP para mais de um nível** *(emenda (b) do #7)*: o #3 sobe só `niveis_rugido_max` (1) nível por ele e corta o excedente em `limiar_xp(Nivel) − 1` (F3). O aviso `RugidoMuitosNiveis` é do build do #7 (F11), e o #5 conta `OfertasNoRugido` pelos `NiveisGanhos` do tick. Nunca há cadeia de ofertas no tick do chefe.
+- **Se a fase termina no tick do rugido** (o herói morre no tick em que o chefe nasce, Edge Cases do #7): o XP do rugido se perde junto com todo XP de tick de fim (Regra 5.4), então não há nível nem oferta nesse tick.
 - **Se a lista de mortos do `SimWorld` (`DeathsThisTick`) não é limpa em todo tick**: o #3 não roda nos ticks com `CombatActive` falso, e a lista velha seria somada de novo. A lista é do tick atual e é limpa em **todo** tick.
 - **Se saem `nivel_max − 1` ofertas em fila, ou o pool do #9 não tem 3 cartas**: o #3 só incrementa `NiveisGanhos`. Quem decide é o #9 (oferta com menos de 3 cartas) e o #16 (o cursor avança mesmo sem oferta possível). Exigência registrada ao #9 e ao #16, senão `CombatHold` = 1 sem carta trava o combate para sempre.
 - **Se `nivel_max` = 2**: é válido, com uma única oferta. **Se `xp_base` é tão alto que ninguém sobe de nível**: a F5 recusa no setup, e no runtime zero level-ups é válido (o #3 não recalcula a F5).
@@ -397,7 +411,7 @@ Cada caso diz a condição exata e o resultado exato. O que o #2 e o #28 já res
 | #2 Simulação determinística (GDD em revisão) | **Hard** | O contexto do tick (`CombatActive`, `CombatTick`, `Emit`), `Simulation.Create`, o `SimWorld` (ficha de fase, tabela de ids, marca `Essencial`) | O ADR-0001 ainda é *Proposed*; a ficha de fase e a FS9 pedem emenda (OQ-5 do #2) |
 | #28 Save local (GDD em revisão) | **Hard** | `BeginStage` e a resposta do commit da marca, "marca encontrada" no boot, o commit de fim de partida | `CancelStage` nunca grava a marca, `requestId` único entre chamadores, `AttemptId` de 128 bits (exigências ao #28 e ao ADR-0003, Interactions) |
 | #6 Combate e dano | **Hard** (GDD #6 de 2026-11-05) | Vida e morte do herói e dos inimigos; a causa de cada morte | O #6 lê `NiveisGanhos` da ficha para a cura do level-up (Regra 6), sem chamada do #3; ajuste pendente na Regra 15 do #6 |
-| #7 Horda, waves e inimigos | **Hard** (contrato provisório, sem GDD) | O chefe com a marca `Essencial`; `xpDaMorte` por arquétipo; o cronograma e o `tick_entrada_chefe_agendado`; os dados de onde o #1 soma o `xp_total_fase`; a lista de mortos do tick (o dono, #6 ou #7, sai no ADR deles) | Não há ciclo: o #7 depende de 1, 2 e 6 |
+| #7 Horda, waves e inimigos | **Hard** (GDD #7 em revisão; exigências cumpridas) | O chefe com a marca `Essencial`; `xpDaMorte` por arquétipo; o cronograma e o `tick_entrada_chefe_agendado`; os dados de onde o #1 soma o `xp_total_fase`; a lista de mortos do tick (`DeathsThisTick` do `SimWorld`; dono resolvido no GDD #6, 2026-11-05); o XP do rugido (`xp_rugido_permil`, `niveis_rugido_max`) | Não há ciclo: o #7 depende de 1, 2 e 6 |
 
 **Decisões externas que o #3 respeita:** o ADR-0001 (*Proposed*: `ISimSystem` em `Forja.Gameplay.Sim`, sem engine, float32, 30 Hz, sem `static` mutável); o conceito congelado (`game-concept.md`, exceto a linha 120, ver Open Questions); e o modelo de negócio (R6 veta o revive por vídeo durante a partida; a regra de que não existe nenhuma forma de continue é a Regra 8 daqui).
 
@@ -425,7 +439,7 @@ Nenhum destes foi editado por este GDD (um GDD não altera outro sem aprovação
 - **#28 Save local e ADR-0003:** `CancelStage` nunca grava a marca; `requestId` único entre chamadores; `AttemptId` de 128 bits; callback fora do `Tick`; o payload opaco do #3 é vazio no MVP.
 - **#6 Combate e dano:** a Regra 15 passa a ler `NiveisGanhos` com um cursor `NiveisCurados` no `Hash` do #6, em vez de receber `Curar` do #3; tirar o "BLOQ: emenda do #3" do R15 do #6; o edge case da oferta adiada pelo aviso de golpe (Regra 16 do #6) quando a fase termina antes de ela abrir.
 - **ADR-0001, emenda 14:** o `Preparar` grava a ficha inteira (não só o `IdDoHeroi`), e o `PhaseSheet` ganha `MotivoFim`.
-- **#7 Horda:** `xpDaMorte`, `Essencial` no chefe (exatamente 1), `tick_entrada_chefe_agendado`, a lista de mortos com causa limpa a cada tick, e o primeiro ataque do chefe só no tick seguinte ao nascimento.
+- **#7 Horda:** `xpDaMorte`, `Essencial` no chefe (exatamente 1), `tick_entrada_chefe_agendado`, a lista de mortos com causa limpa a cada tick, e o primeiro ataque do chefe só no tick seguinte ao nascimento. *(cumprido: o GDD #7 declara tudo isso, Regras 3, 4, 9 e 10 e F9, em 2026-11-05; o XP do rugido, emenda (b), entrou aqui em 2026-11-06)*
 - **#16 Grimório e #9 Oferta:** o cursor de ofertas tratadas; `IPreparaFase` e `IConcluiFase`; não abrir oferta quando o contexto traz um pedido de fim; a fila de ofertas sem carta possível (soft-lock); o registro no Grimório depois do fim, como segundo commit.
 - **ADR-0001 (via `/architecture-decision`):** a ficha de fase, as interfaces `IPreparaFase` e `IConcluiFase`, o caminho de escrita da marca `Essencial` fora do tick, a coluna `xpDaMorte` e a lista de mortos do tick.
 - **Conceito (`game-concept.md`, congelado):** a linha 120 ("coleta orbes de XP") pede emenda, porque o XP é direto.
@@ -445,7 +459,7 @@ Os knobs do #3 **moram no #1** (que guarda o valor, a unidade e a faixa segura);
 | `teto_xp_min_pct` (F5) | a calibrar | 1 a 100 | não | a fração mínima do XP total da fase em que o teto de nível deve ser atingido | o teto é atingido cedo demais e o XP do resto da fase é descartado | a F5 recusa fases em que o teto chega com folga |
 | `teto_xp_max_pct` (F5) | a calibrar | `teto_xp_min_pct` a 100 | não | a fração máxima do XP total em que o teto deve ser atingido | a F5 recusa quase tudo | o teto quase nunca é atingido e os últimos níveis são letra morta |
 
-**Knobs de outros GDDs que o #3 consome (sem duplicar):** `xpDaMorte` por arquétipo e o cronograma de waves (#7), `P = P_f + P_c` (#1, F4 do #1), `replay_limit` (#1, F5 do #1: quantos replays contam vitória para o K_min), `K_min` (#16 e #17) e as capacidades (#1, F3 do #1). O `MaxTicksPerFrame` (#2) não passa pelo #3.
+**Knobs de outros GDDs que o #3 consome (sem duplicar):** `xpDaMorte` por arquétipo, o cronograma de waves e o XP do rugido (`xp_rugido_permil`, `niveis_rugido_max`, F2 e F3) (#7), `P = P_f + P_c` (#1, F4 do #1), `replay_limit` (#1, F5 do #1: quantos replays contam vitória para o K_min), `K_min` (#16 e #17) e as capacidades (#1, F3 do #1). O `MaxTicksPerFrame` (#2) não passa pelo #3.
 
 **Constantes deliberadas (não são knobs):** `ids_de_preparacao` = 1 (o herói); o nível inicial é 1 e o XP inicial é 0; o MVP tem exatamente 1 inimigo `Essencial` por fase; a prioridade `FalhaInterna` > `Vitoria` > `DerrotaHeroi` > `DerrotaTempo`; a seed nova a cada tentativa (decisão do autor); e `NiveisGanhos = Nivel − 1`. Mudar qualquer uma delas é decisão de design, não ajuste de balanceamento.
 
@@ -570,7 +584,9 @@ Cada linha afirma `Resultado.Causa`, `Resultado.ContaComoMorteDeFase(causa, chef
 
 - **F1** (a) **GIVEN** `xp_base` 10, `xp_inc` 6, `xp_quad` 1, **THEN** `limiar_xp(1..9)` = 10, 17, 26, 37, 50, 65, 82, 101, 122 e o acumulado = 10, 27, 53, 90, 140, 205, 287, 388, 510. (b) Para `nivel_max` = 100, uma varredura confirma `limiar(n+1) − limiar(n) = xp_inc + xp_quad × (2k + 1) ≥ 1`, incluindo o caso mínimo (`xp_inc` 1, `xp_quad` 0). (c) Limiar acima de 2³¹ − 1: o `Preparar` recusa com `FalhaInterna(DadosInvalidos)`, nunca faz clamp.
 - **F2** Mortes de 2, 2 e 5 mais uma por valor inválido dão 9; sem mortes dá 0; três mortes com `xpDaMorte` = 2³¹ − 1 somam em `long` sem estourar.
+- **F2b** (rugido) **GIVEN** 3 mortes com causa `Rugido` de `xpDaMorte` 1 e `xp_rugido_permil` 500, **THEN** `xp_rugido_do_tick` = 1; 120 corpos de XP 1 com permil 500 dão 60; permil 0 dá 0 e permil 1000 dá o total; mortes normais e por `Rugido` no mesmo tick somam em totais separados; morte por valor inválido vale 0 nos dois.
 - **F3** Nível 3, XP 20, +60 dá Nível 5, XP 17, +2. `nivel_max` 10, Nível 9, XP 100, +50 dá Nível 10, XP 0, +1. No limite exato (`xp` = `limiar`) sobe e `XpAtual` = 0. Uma varredura em grade fixa (sem aleatório) sobre (Nível, XP, ganho) afirma: `XpAtual < limiar` fora do teto, `XpAtual` = 0 no teto, `NiveisGanhos = Nivel − 1`, no máximo `nivel_max − 1` passos, e XP conservado fora do teto. `nivel_max` = 2 dá uma só oferta; XP 0 não muda nada.
+- **F3b** (limite do rugido) Nivel 4, XP 30, `xp_rugido_do_tick` 200, com os limiares do F1 (37, 50, 65), `niveis_rugido_max` 1: Nivel 5, `XpAtual` 49, `NiveisGanhos` +1. Com `niveis_rugido_max` 2: Nivel 6, `XpAtual` 64 (143 cortado em `limiar(6) − 1`). Sem rugido (0), o resultado é o do F3. O XP normal do mesmo tick não tem limite. A varredura do F3 repete com `xp_rugido_do_tick` e afirma `NiveisGanhos = Nivel − 1`, `XpAtual < limiar` fora do teto e que o rugido nunca sobe mais que `niveis_rugido_max` níveis.
 - **F4** **GIVEN** o chefe entra no `CombatTick` 4000 e o teto é de 2700 ticks, **THEN** no tick 6699 não há derrota e no 6700 há `DerrotaTempo`; se o chefe morre no 6700, a vitória vale. Chefe agendado no 4000 e nunca nascido: `FalhaInterna(ChefeAusente)` no 6700, sem contar morte. Chefe que nasce depois do agendado e antes do teto: sem `ChefeAusente`. O teste não converte segundos (o #1 entrega o inteiro). Fronteira da soma: `tick_entrada_chefe_agendado` = 2³¹ − 1 com teto de 2700 não dá `ChefeAusente` no tick 1 (a conta é em `long`).
 - **F5** (função pura, chamada pelo #1) Com P = 10, `folga_pool` 1, `nivel_max` 10, faixa de 60 a 85 % e total 700: passa. `nivel_max` 12: recusado. Fronteiras com a faixa de 60 a 85 %: total 850 passa e 851 reprova (mínimo); total 600 passa e 599 reprova (máximo); P = 9 reprova (folga); `xp_total_fase` = 0 reprova. A conta usa `long`, então `acum × 100` não estoura.
 - **F6** Removido: não é um critério (o #3 não define fórmula de contagem para o K_min; a tabela da Regra 8 é coberta por X1 a X10).
@@ -604,7 +620,7 @@ Cada linha afirma `Resultado.Causa`, `Resultado.ContaComoMorteDeFase(causa, chef
 - **I1 [I] #3 com #2:** num compositor [#6 falso, #3, #16 falso], trocar a ordem muda o hash; o pedido de fim sai pelo contexto; `CombatActive` falso congela o #3; a `FalhaInterna` do #2 vence o pedido do #3.
 - **I2a [I] #3 com #16 falso:** o cursor do falso lê `NiveisGanhos`; sem `IPreparaFase` e `IConcluiFase` implementadas o compositor não chama nada; sem o #16 a fase corre. **I2b [I]** com o #16 real. **BLOQ: #16** (Gate de integração do MVP).
 - **I3a [I] #3 com #28 falso:** `BeginStage`, a resposta com o `attemptId` e o `requestId` do pedido pendente, o commit de fim, um `CancelStage` que substitui um `BeginStage` pendente deixa 0 marcas no `FakeSave`, o callback fora do `Tick` e a marca encontrada. **I3b [I]** com o #28 real. **BLOQ: #28 real e as emendas pedidas ao #28** (Gate de integração do MVP).
-- **I4 [I] #3 com #6 e #7:** `xpDaMorte`, a lista de mortos com causa, `Essencial` no chefe, o primeiro ataque do chefe só no tick seguinte. **BLOQ: #6 e #7 sem GDD.**
+- **I4 [I] #3 com #6 e #7:** `xpDaMorte`, a lista de mortos com causa, `Essencial` no chefe, o primeiro ataque do chefe só no tick seguinte. **BLOQ: implementação do #6 e do #7** (os GDDs existem; a primeira porta é o ADR das colunas do `SimWorld`). O XP do rugido tem teste de unidade próprio no #3 (F2b e F3b).
 - **I5 #3 com #1:** snapshot, knobs e F5 reais. **BLOQ: emenda do #1.**
 - **I6 [I] #3 com #5 falso:** seed antes do tick 0, hash final, causa, `MorteSimultanea`, "abandonada" e exceção chegam ao `FakeLog`. **BLOQ: #5** para o real.
 - **I7 [I] #3 com #20 stub:** o resultado (causa, vitória, nível final) chega ao stub. **BLOQ: #20** para o real.
@@ -621,7 +637,7 @@ Cada linha afirma `Resultado.Causa`, `Resultado.ContaComoMorteDeFase(causa, chef
 ### Teste sem tela e custo por tick
 
 - **SEMTELA1 [I]** **GIVEN** uma fase roteirizada (waves, chefe e XP de falsos) e 3 retries com as seeds fixas do fixture próprio do #3, `SeedsFluxoDeFase` (não da lista do aceite, que mora no `mvp.md`, ainda inexistente; a lista do aceite entra no SEMTELA2), **WHEN** roda até o resultado, **THEN** fecha com a causa e o nível final esperados, sem UI. Estourar o teto de `CurrentTick` do runner reprova o teste; não vira resultado de fase.
-- **SEMTELA2 [I]** Tank × DPS. **GIVEN** dois perfis falsos (mata devagar e mata rápido) e a mesma seed por override, **THEN** a sequência de spawns é igual e só o resultado muda. **BLOQ: #6, #7, #8, #16 e `docs/acceptance/mvp.md`** para a comparação real.
+- **SEMTELA2 [I]** Tank × DPS. **GIVEN** dois perfis falsos (mata devagar e mata rápido) e a mesma seed por override, **THEN** a sequência de spawns é igual e só o resultado muda. **BLOQ: implementação do #6 e do #7, GDDs do #8 e do #16 e `docs/acceptance/mvp.md`** para a comparação real.
 - **P1 [PM]** Zero alocação gerenciada por tick. O protocolo é o do #2 (aparelho de referência, Release IL2CPP, aquecimento, 20 ou mais execuções, ao menos 1 fase completa), reportando p95 e máximo do passo do #3 com 100, 300 e 600 mortes no tick; passa se o p95 ficar dentro do orçamento do #3 (X1 do #2). **BLOQ: spike, aparelho verificado e o orçamento, que ainda não existe.**
 - **P2 [U] (ADVISORY)** Alarme: `GC.GetAllocatedBytesForCurrentThread` perto de 0 em 10.000 ticks roteirizados, depois do aquecimento. Medir alocação é `NOT SOURCEABLE` como prova em `docs/engine-reference/unity/`, então vale só como alarme.
 

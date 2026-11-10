@@ -205,7 +205,7 @@ state_ownership:
     owner_system: presentation
     adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
     interface: "Forja.Gameplay.Presentation and Forja.Gameplay.Sim.View: lastFacing[id] (length EntityCapacity), the GhostPool (GHOST_POOL_MAX 300) and the CardPool (ALLY_CARD_MAX 150 plus CARD_POOL_MAX 32), the per-instance data array and the instance texture; all created on the loading screen, outside the hash and outside the log as game state; no mutable static (anything static is reset in RuntimeInitializeOnLoadMethod SubsystemRegistration)"
-    write_access: "only the PresentationDriver, from IPresentationSink.OnTick after every Tick and from its LateUpdate; the presentation never writes to the simulation, never calls Tick, Spawn or Kill, and nothing it keeps enters the hash"
+    write_access: "only the PresentationDriver, from ITickObserver.OnTickDrained (ADR-0007 hook in Sim.Host) after every Tick and from its LateUpdate; the presentation never writes to the simulation, never calls Tick, Spawn or Kill, and nothing it keeps enters the hash"
     referenced_by:
       - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
       - design/gdd/combate-e-dano.md
@@ -347,13 +347,13 @@ interfaces:
       - selo-17
       - heroi-19
     adr: docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
-    signal_signature: "ISaveService on the main thread: RequestCommit(requestId, kind, in snapshot), BeginStage(requestId, in mark), CancelStage(requestId), ConsumeMark(in answer), TryDequeueResult(out CommitResult) read between frames; the requestId comes from one shared injected source used by all callers (#3, #17), unique across them; CommitResult carries RequestId, AttemptId (128 bits, compared by equality only, from an injected source), Outcome (Pending, Confirmed, Failed, never a timeout); a replaced request still gets its own result; on replacement the backup rotation follows the strongest kind (Seal) and the stage mark follows the last request, so CancelStage never writes the mark; Confirmed only after FsyncDirectory"
+    signal_signature: "ISaveService on the main thread: RequestCommit(requestId, kind, in snapshot), BeginStage(requestId, in mark), CancelStage(requestId), ConsumeMark(in answer), TryDequeueResult(out CommitResult) read between frames; the requestId comes from one shared injected source used by all callers (#3, #17), unique across them; CommitResult carries RequestId, AttemptId (128 bits, compared by equality only, from an injected source), Outcome (Pending, Confirmed, Failed, never a timeout); a replaced request still gets its own result; on replacement the backup rotation follows the strongest kind (Seal) and the stage mark follows the last request, so CancelStage never writes the mark; Confirmed only after FsyncDirectory; (ADR-0003 Amendment 3, 2026-11-10) FailureCause is enum byte (None 0, DiskFull 1, WriteError 2, VerifyFailed 3, StorageUnavailable 4, ReadOnlyRejected 5, MarkUnanswered 6, Unexpected 7; explicit values, only grows) and CommitOutcome is unchanged; in read-only mode a commit request is refused with ReadOnlyRejected without touching storage; Seal is idempotent (the dirty flag only clears on Confirmed; a repeated Seal with a pending commit inherits that commit result); CommitKind has MarkConsume = 6; the mark is found on boot through OnMarkFound (MarkFoundHandler, called on the main thread) with MarkState and a transition table, the #3 answers with MarkAnswer { AttemptId, Effect } and ConsumeMark writes the effect in the SAME commit as the consumption (no deduplication of the effect, GDD #3 R13); a restored mark is born Answered; BeginStage with Mark == Found fails with MarkUnanswered; CancelStage drops the mark of the request it covers in the same step; IDataResolver (TryResolve, TryGetRevisionHistory; DefKind, DefRef) is declared in Forja.Save (ADR-0003) and implemented by DataResolver in Forja.Gameplay.Sim.Resolve (ADR-0002 round 6; no Forja.Data -> Forja.Save reference) over the DefIdTable (IdTable section of the catalog, ordinal order, byte deprecated; RevisionHistory section; both in the ContentHash); resolution runs outside the tick and an unknown ID returns false without throwing; the save stores the ID, never the index"
     referenced_by:
       - docs/architecture/adr-0003-save-local-envelope-tlv-commit-atomico-gravador-unico.md
       - design/gdd/save-local.md
       - design/gdd/fluxo-de-fase.md
     added: 2026-11-05
-    revised: 2026-11-05
+    revised: 2026-11-10
     # was (ADR-0003 revision, 2026-11-05): signal_signature "...the caller passes the requestId, CommitResult carries RequestId, AttemptId, Outcome (Pending, Confirmed, Failed, never a timeout); a replaced request still gets its own result; Confirmed only after FsyncDirectory"; referenced_by without design/gdd/fluxo-de-fase.md
   - contract: save_storage
     status: active
@@ -468,26 +468,69 @@ interfaces:
     consumers:
       - event-log-5
     adr: docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
-    signal_signature: "ICounterSource.Collect(ref CounterWriter w) (Forja.Gameplay.Sim.Log; CounterWriter is a ref struct): each system with diagnostics declares its counter ids in its own enum with explicit values that only grows at the end; the host reads them before the Discard; a value that cannot be read is written with Available = 0 (never 0); the Core counters are CommandsRejected, SpawnsRejected, NonFiniteCount and DroppedEvents"
+    signal_signature: "ICounterSource.Collect(ref CounterWriter w) (Forja.Gameplay.Sim.Log; CounterWriter is a ref struct): each counter record carries Source u8 (Core 0, Host 1, Sim 2, View 3, Budget 4) and CounterId u16 is unique per Source; each system with diagnostics declares its counter ids in its own enum with explicit values that only grows at the end; the host reads them before the Discard; a value that cannot be read is written with Available = 0 (never 0); the Core counters are CommandsRejected, SpawnsRejected, NonFiniteCount and DroppedEvents"
     referenced_by:
       - docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
       - design/gdd/horda-waves-e-inimigos.md
     added: 2026-11-06
     revised: ""
-  - contract: presentation_sink
+  - contract: tick_observer
     status: active
     pattern: direct_call
     producer: phase-host
     consumers:
       - presentation
     adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
-    signal_signature: "IPresentationSink.OnTick(int combatTick, ReadOnlySpan<SimEvent> events, ReadOnlySpan<DeathRecord> deaths) (Forja.Gameplay.Sim.View) called by the PhaseHost after every Tick and its DrainEvents, including the tick that ends the phase and before the loop stops; deaths is DeathsThisTick, which the Core clears every tick, so this is the only place to capture it; the sink only copies into fixed-size structures (GhostPool, CardPool) and never draws"
+    signal_signature: "ITickObserver.OnTickDrained(int tick, ReadOnlySpan<SimEvent> events, SimStatus status) (Forja.Gameplay.Sim.Host, defined by ADR-0007, implemented by the PresentationDriver of ADR-0009 and by the PhaseLog of ADR-0008) called by the PhaseHost once per tick with the span of a single DrainEvents (ADR-0001 Amendment 19: a second DrainEvents returns empty); the presentation reads DeathsThisTick from the SimWorld inside the callback; also IAppLifecycleObserver (OnAppPaused/OnAppResumed/OnAppQuitting) implemented by the LogHost; called by the PhaseHost after every Tick and its DrainEvents, including the tick that ends the phase and before the loop stops; deaths is DeathsThisTick, which the Core clears every tick, so this is the only place to capture it; the sink only copies into fixed-size structures (GhostPool, CardPool) and never draws"
     referenced_by:
       - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
       - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
     added: 2026-11-06
     revised: ""
-    # pending amendment on ADR-0007 decision 6 step 7: deliver DeathsThisTick, not only the events
+    # amendment on ADR-0007 resolved 2026-11-10: neutral hooks ITickObserver and IAppLifecycleObserver (ADR-0007 decision 8); no dependency of 0007 on 0008/0009
+    # 2026-11-10 round 4: PhaseHost.IsDiscarded (read-only bool, true synchronously at the start of the Discard step, before the deferred Destroy; never goes back to false); the presentation checks it in LateUpdate and returns early, so it never reads views or spans of a discarded Simulation
+    # 2026-11-10 round 2: tick = SimWorld.CurrentTick (monotonic, also during CombatHold); CombatTick is read from the SimWorld in the callback; the Ended tick delivers OnTickDrained once, then EndPending; Concluir -> Discard -> commit run in the next Update
+  - contract: frame_observer
+    status: active
+    pattern: direct_call
+    producer: phase-host
+    consumers:
+      - load-governor
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    signal_signature: "IFrameObserver.OnFrameEnd(in FrameStats stats) (Forja.Gameplay.Sim.Host, defined by ADR-0007 decision 8, implemented by the LoadGovernor of ADR-0010): called by the PhaseHost once at the end of every simulation frame (also frames of 0 ticks, pause and closed gate; not in the Update of EndPending), main thread, no allocation, never throws; FrameStats { int TicksRun; int DtUsedTicks; int DroppedTicks; float DtUsedSeconds } only grows at the end; DtUsedSeconds is the sanitised dt before the dt_ef cut; observers get no reference to drive the loop (Tick, Discard, BeginStage); the PhaseHost exposes Alpha read-only"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-10
+    revised: ""
+  - contract: phase_end_observer
+    status: active
+    pattern: direct_call
+    producer: phase-host
+    consumers:
+      - event-log-5
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    signal_signature: "IPhaseEndObserver.OnPhaseEnding(in PhaseEndInfo info) (Forja.Gameplay.Sim.Host, defined by ADR-0007 decision 8; to be implemented by the PhaseLog of ADR-0008): called by the PhaseHost once in the Update of EndPending, after the host computes the StateHash and before Concluir; sequence: (a) hash and PhaseEndInfo, (b) OnPhaseEnding, (c) Concluir, (d) Discard, (e) end-of-phase commit request; PhaseEndInfo { int CurrentTick; int CombatTick; ulong StateHash; byte FinalHashAvailable; SimStatus Status; int DroppedTicksTotal } only grows at the end; the log writes the hash, calls the ICounterSource.Collect list and copies DroppedTicksTotal here, so the footer does not need the PhaseHost alive; FinalHashAvailable is 0 only for Broken or Destroyed; the PhaseHost does not reference Sim.Log"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
+    added: 2026-11-10
+    revised: ""
+    # 2026-11-10 round 8: Concluir -> Discard -> commit runs in the next Update OR synchronously in OnApplicationPause(true) with EndPending (ADR-0007); OnPhaseEnding runs before Concluir in both paths
+    # 2026-11-10 round 4: the PhaseLog of ADR-0008 implements IPhaseEndObserver; the host sets EndObserversCalled = true before the call and wraps each observer in try/catch (an exception never repeats step (b) and never blocks Concluir, Discard or the commit); the EndPending Update runs even while the app is paused; the footer is written after the commit response with the data captured in OnPhaseEnding (FinalHashAvailable = 0 and a HostNote if the observer throws)
+  - contract: session_note_sink
+    status: active
+    pattern: direct_call
+    producer: app-lifecycle
+    consumers:
+      - event-log-5
+    adr: docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+    signal_signature: "ISessionNoteSink.WriteSessionNote(byte noteKind, int code) (Forja.Gameplay.Sim.Host, declared by ADR-0007 with primitive types only because HostNote lives in Sim.Log; implemented by the LogHost of ADR-0008, which builds HostNote { Tick = -1, Kind = (NoteKind)noteKind, Code = code } and goes to the SESSION buffer written with FlushSession; an unknown noteKind adds to LogFaults, writes nothing and never throws); injected by the compositor into AppLifecycle.SessionNoteSink, null = discard; used when BeginStage fails (including MarkUnanswered) with noteKind = 10 (NoteKind.BeginStageFailed, ADR-0008) and code = (int)FailureCause (ADR-0003); a StartupFailed with StartupFailReason.CatalogInvalid (ADR-0007) blocks BeginStage and the opening of the save (#28); AppLifecycle.BootState { Pending = 0, Ready = 1, Failed = 2 } must be Ready (AppLifecycle.ReportBootReady()) before BeginStage or the save opens, and the embedded snapshot is read as a synchronous TextAsset (never StreamingAssets, Addressables or a scene field); the DataResolver is mounted from the validated snapshot before the #28 opens the save; OnApplicationPause(true) with EndPending runs PhaseHost.RunEndPending() synchronously (idempotent) after Add(AppPaused) and before the pause save flow (residual risk: if the process dies before the writer finishes, a won phase is lost); ADR-0003 Amendment 5: for the pause flow the phase lasts until the end-of-phase commit COMPLETES (Confirmed or Failed), so a pause that starts with that commit pending does not request a substitute and waits for it with SAVE_PAUSE_FLUSH_CEILING_MS (the ceiling counts only that wait; Step4SyncMs, target <= 50 ms provisional, is measured separately); the log FlushPending persists only the log; Discard sets enabled = false and IsDiscarded synchronously"
+    referenced_by:
+      - docs/architecture/adr-0007-ponte-de-entrada-tempo-e-ciclo-de-vida-do-app.md
+      - docs/architecture/adr-0008-log-de-eventos-e-instrumentacao-do-5.md
+    added: 2026-11-10
+    revised: ""
   - contract: effect_clock
     status: active
     pattern: direct_call
@@ -522,13 +565,13 @@ interfaces:
     consumers:
       - presentation
     adr: docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
-    signal_signature: "LoadGovernor.Level (Forja.Gameplay.Sim.Budget) returns the LoadLevel of ADR-0009 (Forja.Gameplay.Sim.View: Normal = 0, High = 1); LoadGovernor.Add(dtSeconds) is fed once per frame by the PhaseHost with DtUsed (dt <= 0 ignored); read once per frame by the PresentationDriver in LateUpdate and handed to VfxBudget.Grant; it depends on the real clock, so no tick system, command or game rule reads it, and it never enters the hash or the log as state"
+    signal_signature: "ILoadLevelSource { LoadLevel Level { get; } } (Forja.Gameplay.Sim.View, declared by ADR-0009, default NullLoadLevelSource = always Normal) is implemented by the LoadGovernor (Forja.Gameplay.Sim.Budget, ADR-0010) and injected by the compositor into the PresentationDriver, which does not reference the LoadGovernor type; LoadLevel of ADR-0009 (Normal = 0, High = 1); the LoadGovernor implements IFrameObserver and receives FrameStats.DtUsedSeconds once per frame (dt <= 0 ignored); the PhaseHost never calls the LoadGovernor; read once per frame by the PresentationDriver in LateUpdate and handed to VfxBudget.Grant; it depends on the real clock, so no tick system, command or game rule reads it, and it never enters the hash or the log as state"
     referenced_by:
       - docs/architecture/adr-0010-orcamento-de-frame-por-sistema-e-de-entrada-na-fase.md
       - docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
     added: 2026-11-06
     revised: ""
-    # pending amendment on ADR-0009 decision 6: the real LoadLevel comes from this ADR, and the text "Alto" becomes "High"
+    # ADR-0009 decision 6 now owns the LoadLevel enum (Normal = 0, High = 1); this ADR cites it and redefines nothing (2026-11-10, round 2)
 
 # Example:
 #
@@ -984,7 +1027,7 @@ api_decisions:
     # provisional (ADR-0009): overdraw trigger, if it fails reduce ALLY_CARD_MAX and the ally alpha first, then reopen art bible 8.7 with the author
   - purpose: boss_prewarm
     status: active
-    api: "PrewarmPlan run by the PrewarmRunner on phase entry (Entrando), in parallel (async IO only) with the BeginStage request and before Simulation.Create: load the boss model, materials and textures; compile the shader variants with ShaderVariantCollection.WarmUp; load the boss LUT Volume profile; draw the boss and the roar disc once off-screen (mandatory, it is the draw that warms the pipeline state); ask the audio to decode the roar clips; the host waits up to PREWARM_MAX_WAIT_MS (3000) after the BeginStage confirmation, then the phase starts anyway, the load continues in the background, the host writes HostNote PrewarmIncomplete and adds to PrewarmIncompleteCount (a failure of AC-P4 in the spike); the runner takes a CancellationToken and may allocate (loading, off the hot path)"
+    api: "PrewarmPlan run by the PrewarmRunner on phase entry (Entrando), in parallel (async IO only) with the BeginStage request and before Simulation.Create: load the boss model, materials and textures; compile the shader variants with ShaderVariantCollection.WarmUp; load the boss LUT Volume profile; draw the boss and the roar disc once inside the frustum of the real camera, behind the loading UI, with the same URP Renderer, quality level and shadow-casting light (best-effort warm-up: it is the draw that warms the pipeline state); ask the audio to decode the roar clips; residency (assets loaded before Create and before the 1st Tick) is mandatory and runs in parallel with the BeginStage request (Create waits for both): PrewarmRunner.EnsureResident(plan, ct) finishes or fails the entry at ENTRY_MAX_MS - ENTRY_TAIL_MS (ADR-0010; ENTRY_TAIL_MS = 500 is the tail for Create, Preparar and allocation); the AsyncOperation of AssetBundle and scene loads cannot be cancelled, so the runner keeps the handles and PrewarmRunner.ReleasePending() releases each late load when it finishes, and a second entry attempt reuses the pending handle; the warm-up PrewarmRunner.Warm(plan, warmMaxMs, ct) is best-effort, runs in PrewarmSteps (ShaderVariantSlice, WarmupDraw, AudioDecode), ONE step per frame with the cap checked between steps, so the window can pass the cap by at most PREWARM_STEP_MAX_MS (the largest synchronous step, 200 ms provisional, measured in spike VR7; an ANR risk on GLES); warmMaxMs <= PREWARM_MAX_MS (3000, decided by ADR-0010) is computed by the host as max(0, min(PREWARM_MAX_MS, ENTRY_MAX_MS - ENTRY_TAIL_MS - t_residency - PREWARM_STEP_MAX_MS)); cut at the cap and never continues after the 1st Tick; when cut the host writes HostNote PrewarmIncomplete and adds to PrewarmIncompleteCount (a failure of AC-P4 in the spike); the runner takes a CancellationToken and may allocate (loading, off the hot path)"
     not: "loading the boss assets on the roar tick, blocking the phase past the wait ceiling, doing the prewarm inside Preparar (it is synchronous pure C#)"
     adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
     reason: "GDD #7 AC-P4 wants zero synchronous asset loads on the roar tick; Preparar is pure and synchronous while asset loading is asynchronous, so the prewarm moves to phase entry"
@@ -1258,13 +1301,13 @@ forbidden_patterns:
     added: 2026-11-06
   - pattern: deaths_read_after_tick
     status: active
-    description: "DeathsThisTick must not be read from the LateUpdate or any place other than IPresentationSink.OnTick, which the PhaseHost calls after every Tick including the one that ends the phase."
+    description: "DeathsThisTick must not be read from the LateUpdate or any place other than ITickObserver.OnTickDrained, which the PhaseHost calls after every Tick including the one that ends the phase."
     why: "The Core clears the list every tick; a frame that runs several ticks would lose every death but the last."
     adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
     added: 2026-11-06
   - pattern: prewarm_blocks_phase
     status: active
-    description: "The boss prewarm must not hold the phase past PREWARM_MAX_WAIT_MS, and must not be done inside Preparar; after the ceiling the phase starts, the load continues and PrewarmIncomplete is logged."
+    description: "The boss residency and warm-up must not be done inside Preparar, and neither may load or allocate after the 1st Tick; residency fails the entry at ENTRY_MAX_MS, and the warm-up is cut at PREWARM_MAX_MS and logs PrewarmIncomplete."
     why: "A prewarm that hangs would cost the player a phase, and Preparar is synchronous pure C# that cannot wait for asynchronous loading."
     adr: docs/architecture/adr-0009-render-de-multidao-e-vfx-em-mobile.md
     added: 2026-11-06

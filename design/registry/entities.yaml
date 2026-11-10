@@ -54,7 +54,7 @@
 #   in any other shape is reported as unsupported layout, with its number.
 
 version: 1
-last_updated: "2026-11-05"
+last_updated: "2026-11-06"
 
 # ─── ENTITIES ────────────────────────────────────────────────────────────────
 # Named game-world objects: enemies, NPCs, characters, factions, bosses.
@@ -139,9 +139,10 @@ formulas:
       - ticks_per_second
     output_range: [1, 2147483647]
     expression: "floor(s * 30 + 0.5) in decimal; reject when < 1"
-    notes: "Midpoint rounds up (AwayFromZero). Below 1/60 s gives 0 and the dataset is rejected, never clamped. Upper bound is the knob's own safe range."
+    notes: "Midpoint rounds up (AwayFromZero). Below 1/60 s gives 0 and the dataset is rejected, never clamped. Upper bound is the knob's own safe range. Applies to DURATIONS only: an instant on the combat clock (inicio_s of the #7 schedule) uses the same conversion but may be 0 and is rejected only when negative or above instante_max_s (GDD #1 Regra 4 and F1, emenda do #7 2026-11-06)."
     added: 2026-11-03
-    revised: ""
+    revised: 2026-11-06
+    # was (/consistency-check 2026-11-06): range [1, ...] and the reject-below-1 rule were stated for every _s field, which refused inicio_s = 0 of the #7
   - name: taxa_por_tick
     status: active
     source: design/gdd/dados-e-balanceamento.md
@@ -437,17 +438,21 @@ formulas:
     source: design/gdd/fluxo-de-fase.md
     referenced_by:
       - design/gdd/fluxo-de-fase.md
+      - design/gdd/horda-waves-e-inimigos.md
     variables:
       - Nivel
       - XpAtual
       - NiveisGanhos
       - xp_do_tick
+      - xp_rugido_do_tick
+      - niveis_rugido_max
       - nivel_max
     output_range: [0, 2147483647]
-    expression: "xp = XpAtual + xp_do_tick; while Nivel < nivel_max and xp >= limiar_xp(Nivel): xp -= limiar_xp(Nivel), Nivel += 1, NiveisGanhos += 1; at Nivel == nivel_max: xp = 0"
-    notes: "Invariants: at most nivel_max - 1 steps; outside the cap XpAtual < limiar_xp(Nivel); at the cap XpAtual = 0 so the hash is canonical; NiveisGanhos = Nivel - 1 in every attempt. NiveisGanhos only grows and is the contract read by GDD #16 (offer cursor). No XP and no level is granted in the tick where the phase ends."
+    expression: "xp = XpAtual + xp_do_tick; while Nivel < nivel_max and xp >= limiar_xp(Nivel): xp -= limiar_xp(Nivel), Nivel += 1, NiveisGanhos += 1; then xp += xp_rugido_do_tick (xp_rugido_do_tick = floor(sum xpDaMorte over deaths with cause Rugido * xp_rugido_permil / 1000)); passos = 0; while Nivel < nivel_max and passos < niveis_rugido_max and xp >= limiar_xp(Nivel): same step, passos += 1; if Nivel < nivel_max and xp >= limiar_xp(Nivel): xp = limiar_xp(Nivel) - 1 (rugido excess lost); at Nivel == nivel_max: xp = 0"
+    notes: "Invariants: at most nivel_max - 1 steps; outside the cap XpAtual < limiar_xp(Nivel); at the cap XpAtual = 0 so the hash is canonical; NiveisGanhos = Nivel - 1 in every attempt. NiveisGanhos only grows and is the contract read by GDD #16 (offer cursor). No XP and no level is granted in the tick where the phase ends (the rugido XP of that tick is lost too). The rugido XP enters after the normal XP and raises at most niveis_rugido_max levels; the excess is cut at limiar_xp(Nivel) - 1 (provisional, to reassess)."
     added: 2026-11-04
-    revised: ""
+    revised: 2026-11-06
+    # was (/consistency-check 2026-11-06): single loop over xp_do_tick, no separate rugido XP and no level cap for it (emenda (b) do #7 applied in GDD #3)
   - name: derrota_por_tempo
     status: active
     source: design/gdd/fluxo-de-fase.md
@@ -1159,3 +1164,23 @@ constants:
 #     unit: slots
 #     added: 2026-03-26
 #     revised: ""
+  - name: xp_rugido_permil
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/fluxo-de-fase.md
+    value: 500
+    unit: "thousandths of the xpDaMorte of bodies killed by the roar (cause Rugido), summed once per tick and rounded down; safe range 0 to 1000 (GDD #7 Regra 10.2, author decision 2026-11-05; applied by the #3 in F2); not remote; Provisional"
+    added: 2026-11-06
+    revised: ""
+  - name: niveis_rugido_max
+    status: active
+    source: design/gdd/horda-waves-e-inimigos.md
+    referenced_by:
+      - design/gdd/horda-waves-e-inimigos.md
+      - design/gdd/fluxo-de-fase.md
+    value: 1
+    unit: "maximum levels the roar XP raises in the #3 (the excess is cut at limiar_xp(Nivel) - 1); safe range 1 to 3; also the threshold of the build signal RugidoMuitosNiveis (GDD #7 Regra 10.2 and F11; applied by the #3 in F3); not remote; Provisional, to reassess after seeing the scene"
+    added: 2026-11-06
+    revised: ""

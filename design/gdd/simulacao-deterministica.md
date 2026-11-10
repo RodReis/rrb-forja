@@ -375,7 +375,7 @@ Formato: **If** condição, resultado. Itens marcados *(provisória)* são escol
 
 ### Capacidade e eventos
 
-- **If `SimWorld.Spawn` devolve −1**: o #7 sorteia a composição inteira da wave **antes** de chamar `Spawn`, para que a falta de espaço não desloque os sorteios. Spawn essencial (herói, chefe) rejeitado é bug interno e a fase falha. *(provisória; contrato pendente: #7)*
+- **If `SimWorld.Spawn` devolve −1**: o #7 sorteia a composição inteira da wave **antes** de chamar `Spawn`, para que a falta de espaço não desloque os sorteios. Spawn essencial (herói, chefe) rejeitado é bug interno e a fase falha. **Spawn não essencial** (corpo de horda, escolta ou elite do #7): no modo estrito lança; no não estrito conta `SpawnsRejected`, o cursor do #7 avança e o corpo se perde, sem XP (tentar de novo falharia para sempre, porque ids não se reutilizam; Edge Cases do #7) *(contrato confirmado pelo #7 em 2026-11-06; provisória)*. **Pergunta aberta (OQ-3 do #7):** vale reservar 1 id para o essencial, para que ids esgotados por bug de dado da horda não derrubem também o chefe; quem decide é o ADR das colunas do `SimWorld`.
 - **If o `EventBuffer` enche no tick em que o herói morre ou a fase termina**: o estado não muda, e a reserva de posições (Regra 6) garante que o evento crítico chegue ao log.
 - **If o host chama `Tick` sem ter drenado um buffer que não está vazio**: lança exceção sempre, nos dois modos (erro do host, Regra 14).
 - **If `Events` é lido antes do tick 1**: vem vazio. **If é lido depois de *Encerrada***: vem o último tick, intacto. **If é lido durante o `Tick`**: exceção sempre.

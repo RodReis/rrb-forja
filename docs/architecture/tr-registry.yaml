@@ -37,8 +37,8 @@
 #   its fields sit two columns past the dash. Quote a value that holds ": ". A
 #   line in any other shape is reported as unsupported layout, with its number.
 
-version: 3
-last_updated: "2026-11-05"
+version: 4
+last_updated: "2026-11-10"
 
 requirements:
 - id: TR-simulacao-001
@@ -247,9 +247,9 @@ requirements:
 - id: TR-fluxo-008
   system: fluxo
   gdd: design/gdd/fluxo-de-fase.md
-  requirement: "XP e nível em int com intermediários em long, sem divisão; passo O(1) + O(mortes), sem alocação"
+  requirement: "XP e nível em int com intermediários em long, sem divisão exceto uma divisão inteira, só no XP do rugido (floor(Σ xpDaMorte × xp_rugido_permil / 1000)); passo O(1) + O(mortes), sem alocação"
   created: 2026-11-05
-  revised: ""
+  revised: 2026-11-10
   status: active
 - id: TR-fluxo-009
   system: fluxo
@@ -335,6 +335,13 @@ requirements:
   created: 2026-11-05
   revised: ""
   status: active
+- id: TR-fluxo-021
+  system: fluxo
+  gdd: design/gdd/fluxo-de-fase.md
+  requirement: "XP do rugido: mortes com causa Rugido fora do XP normal; xp_rugido_do_tick = floor(Σ xpDaMorte × xp_rugido_permil / 1000) em long, entra depois do XP normal, sobe no máximo niveis_rugido_max níveis e corta o excedente em limiar_xp(Nivel) − 1"
+  created: 2026-11-10
+  revised: ""
+  status: active
 - id: TR-dados-001
   system: dados
   gdd: design/gdd/dados-e-balanceamento.md
@@ -366,16 +373,16 @@ requirements:
 - id: TR-dados-005
   system: dados
   gdd: design/gdd/dados-e-balanceamento.md
-  requirement: "Conversão única no build: floor(s*30+0,5) com recusa abaixo de 1 tick; taxa /30 em decimal para float, bits idênticos em todas as plataformas"
+  requirement: "Conversão única no build: floor(s*30+0,5) com recusa abaixo de 1 tick só para durações; instantes _s podem valer 0 tick (faixa 0 a instante_max_s, mesmo arredondamento); taxa /30 em decimal para float, bits idênticos em todas as plataformas"
   created: 2026-11-05
-  revised: ""
+  revised: 2026-11-10
   status: active
 - id: TR-dados-006
   system: dados
   gdd: design/gdd/dados-e-balanceamento.md
-  requirement: "Um único DataValidator, tudo ou nada, sem clamp, seis checagens, relatório com todos os erros"
+  requirement: "Um único DataValidator, tudo ou nada, sem clamp, seis checagens gerais mais as checagens de setup que cada GDD dono declara, relatório com todos os erros"
   created: 2026-11-05
-  revised: ""
+  revised: 2026-11-10
   status: active
 - id: TR-dados-007
   system: dados
@@ -473,6 +480,20 @@ requirements:
   gdd: design/gdd/dados-e-balanceamento.md
   requirement: "Aplicar o pacote só no hub, sem ritual de selo ou registro aberto (sinal do #17); tela das cartas lê a versão da próxima partida"
   created: 2026-11-05
+  revised: ""
+  status: active
+- id: TR-dados-021
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "O #1 roda por fase as checagens de setup do #7 (arena_ok, chefe_na_tela_ok, spawn_fora_ok, cronograma_ok) e o recálculo de F7, F8 e F9, com a mesma função no editor, no teste e no pacote remoto"
+  created: 2026-11-10
+  revised: ""
+  status: active
+- id: TR-dados-022
+  system: dados
+  gdd: design/gdd/dados-e-balanceamento.md
+  requirement: "Relatório de autoria por fase (linha do tempo em CombatTick, pico agendado, xp_min e xp_max, sinais não bloqueantes como RugidoMuitosNiveis), saída de ferramenta fora do jogo e fora do hash (AC-I6)"
+  created: 2026-11-10
   revised: ""
   status: active
 - id: TR-save-001

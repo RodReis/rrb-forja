@@ -469,7 +469,7 @@ tick_impacto_novo = CombatTick + A
 **Bidirecionalidade (o que cada documento precisa dizer sobre o #6)**
 - **#1 e #2:** já listam o #6 como Hard. O #2 recebe as notas da seção Edge Cases (contadores, Regra 7 em dois tempos).
 - **#3:** lista o #6 como Hard com contrato provisório; falta confirmar que a lista de mortos é o `DeathsThisTick` do `SimWorld` (fecha a OQ-4 do #3).
-- **#4, #5, #7, #8, #10, #11, #12 e #16:** ainda sem GDD; cada um deve citar o #6 nas suas Dependencies com a natureza desta tabela.
+- **#4, #5, #8, #10, #11, #12 e #16:** ainda sem GDD; cada um deve citar o #6 nas suas Dependencies com a natureza desta tabela. O #7 já tem GDD (em revisão) e cita o #6 como Hard.
 - **Índice (`systems-index.md`):** a coluna "Depends On" do #6 continua "1, 2". O #4 não entra nela porque é interface via #2; vale uma nota no Dependency Map. O #16 lista o #6 como Soft (não lê mais nada dele).
 
 **Dependência circular:** nenhuma. O #6 não depende do #3 nem do #7; ele lê o `tickNascimento` e o arquétipo de colunas do `SimWorld`.
@@ -710,7 +710,7 @@ Orçamento de latência do #2: o comando age no tick seguinte à amostragem e a 
 
 - **I2 [I]** (#2) **GIVEN** `Simulation` real, **THEN** a ordem é #7, #8, #6, #3 por espião. `Kill` e `DeathsThisTick` usam a API do #2. **BLOQ: ADR das colunas do SimWorld** e a nota do #2 sobre a Regra 7 em dois tempos.
 - **I3 [I]** (#3, `FakeSistema3`) Herói e chefe morrem no mesmo tick → os dois ids entram em `DeathsThisTick` no mesmo tick (o resultado `Vitoria` é do #3 real, no aceite do #3). Os ids e a causa chegam na linha do `xpValue`.
-- **I7 [I]** (#7 falso) `FakeSistema7` faz nascer horda, elite e chefe com dados declarados, e o #6 executa o ciclo. **BLOQ (só para dados reais): #7 sem GDD.**
+- **I7 [I]** (#7 falso) `FakeSistema7` faz nascer horda, elite e chefe com dados declarados, e o #6 executa o ciclo. **BLOQ (só para dados reais): implementação do #7** (o GDD existe, em revisão).
 - **I8 [I]** (#8 falso) Ordem de enfileiramento preservada, `modDano` 0,99 descartado, `modCadencia` fora da faixa mantém o valor, e o #8 nunca grava HP. **BLOQ (só para o #8 real): #8 sem GDD.**
 - **I12 [I]** Um leitor de colunas reconstrói fase, `ticks_ate_dano`, forma, raio e origem a cada tick, sem depender de evento. **BLOQ: ADR das colunas do SimWorld** (nomes e tipos).
 
@@ -754,7 +754,7 @@ Orçamento de latência do #2: o comando age no tick seguinte à amostragem e a 
 | OQ-7 | Horda pode se sobrepor no MVP; rever depois do spike de performance **e nas fases de função (escoltar e proteger), onde sem bloqueio de corpo "o Tank segura" é só numérico** | autor | pós-spike e GDD do #20 |
 | OQ-8 | **Substituída na re-revisão de 2026-11-05:** a oferta abre na hora, com contagem 3-2-1 na volta (Regra 16); sem `AvisoPerto`, F11 nem espera | autor | — |
 | OQ-9 | Valores a calibrar: dano do elite e do chefe, `cad_s`, `alcance_auto_m`, `kb_d_m`, `mit_*` do Tank | #1, #7, #10 | protótipo |
-| OQ-10 | Arena como retângulo alinhado aos eixos (suposição da F3) | #7 e nível | GDD do #7 |
+| OQ-10 | **Resolvida em 2026-11-06 pelo GDD #7 (F5, `arena_ok`):** a arena é um retângulo alinhado aos eixos, e o #1 recusa a fase se a largura ou a altura for menor que `2,02 × R_spawn_m + margem_spawn_m`. Pergunta original: arena como retângulo alinhado aos eixos (suposição da F3) | #7 e nível | — |
 | OQ-11 | O `Ddash` não cobre a área do chefe: só o timing e a caminhada; reavaliar com o sinal S1 | autor | playtest |
 | OQ-12 | A janela de `mit_golpe` do Tank na F9 é estreita (≈ 0,18 a 0,43 com HP 100); mudar só o HP a quebra | #10 e #1 | balanceamento |
 | OQ-13 | Duração do dissolve da horda (8 a 10 ticks) | art-director e #12 | spike visual |

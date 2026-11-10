@@ -7,7 +7,7 @@ Proposed
 2026-11-06
 
 ## Last Verified
-2026-11-06 (contra o ADR-0001 com as Emendas 1 a 16, o ADR-0002, `docs/registry/architecture.yaml` e os GDDs #6 e #7 em disco; Unity 6.3 LTS, pin 6000.3.x)
+2026-11-10 (contra o ADR-0001 com as Emendas 1 a 19, o ADR-0002, o ADR-0005, `docs/registry/architecture.yaml` e os GDDs #6 e #7 em disco; Unity 6.3 LTS, pin 6000.3.x)
 
 ## Decision Makers
 Rodrigo Reis (escopo e alternativa A confirmados em 2026-11-06; o resto é decisão técnica por recomendação, **provisória, a reavaliar com o jogo jogável**), Claude Code (autoria), `unity-specialist` (validação, 5.5) e `technical-director` (gate TD-ADR, 5.6). Os resultados das duas revisões entram na seção Risks antes de gravar.
@@ -31,10 +31,10 @@ O ADR-0001 permite que o #6 e o #7 acrescentem colunas ao `SimWorld`, mas só po
 
 | Field | Value |
 |-------|-------|
-| **Depends On** | ADR-0001 (`Proposed`; precisa estar `Accepted` e receber a Emenda 17, abaixo) e ADR-0002 (`Proposed`; `IPhaseSnapshot.EntityCapacity`). Este ADR só pode ser aceito depois deles. |
+| **Depends On** | ADR-0001 (`Proposed`; precisa estar `Accepted`; a Emenda 17, abaixo, já está aplicada nele, e a Emenda 19 fixa a ordem do compositor e as leituras de `xpValue`) e ADR-0002 (`Proposed`; `IPhaseSnapshot.EntityCapacity` e `QueueCapacity`). Este ADR só pode ser aceito depois deles. |
 | **Enables** | ADR-0005 (pipeline de dano: `Combate.Curar` acumula na coluna `curaPendente` definida aqui; `Aplicar` não a toca), ADR-0006 (geometria: as colunas de posição e de área são pares de `float`, sem `SimVec2`), GDD #12 (vista de leitura do telegraph) |
 | **Blocks** | Épicos de #6 Combate e dano e #7 Horda; as stories que escrevem ou leem as colunas listadas na Decisão 2; I2, I12, D1, D3 e R22 do #6 e I12 do #7 (hoje "BLOQ: ADR das colunas") |
-| **Ordering Note** | ADR-0005 e ADR-0006 podem ser escritos em paralelo, mas nenhum fixa nome de coluna: se o ADR-0006 escolher um tipo `SimVec2`, ele entra como vista sobre os pares `X`/`Y` daqui, sem mudar o armazenamento. `modDano` e `modCadencia` (TR-combate-001) são **estado escrito pelo #8**: moram no #8 e chegam ao #6 por uma vista do #8 definida no ADR-0005; não são colunas deste ADR, então o ADR-0005 não precisa emendar o ADR-0004 por causa delas. **Nota de sincronia (2026-11-06, ADR-0005):** o ADR-0005 tocou este ADR em dois pontos, já aplicados aqui: o `curaAcc` saiu do scratch (a cura só acumula em `curaPendente`) e entrou o sinal do `Rugido`. As três formas de canal direto da Emenda 18 do ADR-0001 cobrem o `ICombatReadView` (vista só de leitura) e o `curaPendente` (acumulador hasheado do dono). |
+| **Ordering Note** | ADR-0005 e ADR-0006 já estão escritos (`Proposed`) e nenhum fixa nome de coluna: o ADR-0006 usa os pares `X`/`Y` daqui, sem tipo `SimVec2` no armazenamento. `modDano` e `modCadencia` (TR-combate-001) são **estado escrito pelo #8**: moram no #8 e chegam ao #6 por uma vista do #8 definida no ADR-0005; não são colunas deste ADR, então o ADR-0005 não precisa emendar o ADR-0004 por causa delas. **Nota de sincronia (2026-11-06, ADR-0005):** o ADR-0005 tocou este ADR em dois pontos, já aplicados aqui: o `curaAcc` saiu do scratch (a cura só acumula em `curaPendente`) e entrou o sinal do `Rugido`. As três formas de canal direto da Emenda 18 do ADR-0001 cobrem o `ICombatReadView` (vista só de leitura) e o `curaPendente` (acumulador hasheado do dono). |
 
 ## Context
 
@@ -61,7 +61,7 @@ O #6 precisa guardar, por entidade, o estado do golpe com aviso (fase, contagem,
 2. **Colunas compartilhadas novas** (este ADR): `classe`, `arquetipoId`, `tickNascimento`, `hpMax`. Moram no `SimWorld` (Core), são escritas **só pelo `Spawn`**, nunca mudam depois e entram no hash do Core.
 3. **Colunas privadas do #6** (este ADR): estado de combate por entidade. Moram em tabelas do próprio #6 em `Forja.Gameplay.Sim`, indexadas pelo id, com comprimento ≥ `EntityCapacity`; só o #6 escreve; entram no `Hash` do #6; os outros sistemas leem por uma vista só de leitura (Decisão 5).
 4. **Bloco do herói** (este ADR): escalares do #6 que só existem para o herói (esquiva, dash, cadência, hit-stop). Moram numa struct do #6, no `Hash` do #6.
-5. **Scratch do #6**: fila de golpes (ADR-0005), dano e cura acumulados por alvo, `vivoNoInicio`, intenção de velocidade do herói, contadores. Moram no #6, **fora do hash**, e valem só dentro do `Tick` (Decisão 4).
+5. **Scratch do #6**: fila de golpes (ADR-0005), dano acumulado por alvo (`acc`; a cura não tem scratch, ela acumula direto em `curaPendente`), `vivoNoInicio`, intenção de velocidade do herói, contadores. Moram no #6, **fora do hash**, e valem só dentro do `Tick` (Decisão 4).
 
 O #7 **não acrescenta colunas** (confirma a OQ-13 do #7): ele escreve as quatro compartilhadas por meio do `Spawn` e mantém seus cursores no próprio `Hash`.
 
@@ -98,7 +98,7 @@ O #7 **não acrescenta colunas** (confirma a OQ-13 do #7): ele escreve as quatro
 **Scratch (fora do hash):** `acc` (dano acumulado por alvo), o sinal do `Rugido` (ADR-0005), `vivoNoInicio`, `intentVel` do herói (derivada do comando do próprio tick; comandos valem só no tick em que chegam, então não persiste: sem `Move` no tick a intenção é zero, e a ponte reenvia `Move` em todo tick com o stick inclinado, Emenda 4 do ADR-0001; o GDD #6 a lista como coluna hasheada, a sincronizar), a fila de golpes e os contadores de diagnóstico (`CurasDescartadas`, `GolpesLimitados` e afins).
 
 ### 3. Regras de dono, acesso e escrita
-1. **Único escritor.** Cada coluna privada e o bloco do herói têm o #6 como único escritor. "Único escritor" significa o **código do #6**: `Combate.Aplicar` e `Combate.Curar` são as únicas portas de entrada dos outros sistemas, e como essa chamada direta se concilia com "a comunicação interna do tick passa pelo `SimWorld`" (ADR-0001, L84) é decisão do ADR-0005. As colunas compartilhadas não têm escritor depois do `Spawn`. Posição e HP continuam sendo do #6 (Regra 1 do #6).
+1. **Único escritor.** Cada coluna privada e o bloco do herói têm o #6 como único escritor. "Único escritor" significa o **código do #6**: `Combate.Aplicar` e `Combate.Curar` são as únicas portas de entrada dos outros sistemas, e a conciliação dessa chamada direta com "a comunicação interna do tick passa pelo `SimWorld`" (ADR-0001, L84) foi decidida: são as três formas de canal direto da Emenda 18 do ADR-0001, detalhadas no ADR-0005. As colunas compartilhadas não têm escritor depois do `Spawn`. Posição e HP continuam sendo do #6 (Regra 1 do #6).
 2. **Acesso às colunas-base e compartilhadas** (Key Interfaces): leitura por `ReadOnlySpan<T>` de comprimento `IdCount`; escrita de HP e posição por **uma chamada guardada** por `Tick`, `HpAndPosForWrite(out hp, out posX, out posY)`, aceita só dentro do `Tick` e que lança nos demais estados (o mesmo molde de `PhaseForWrite`). A guarda não impede um sistema de chamá-la: o que impede é a regra de revisão e a análise estática (`BannedApiAnalyzers`, AC-D4 do #6), como já é a regra de `PhaseSheet` e `CombatHold`.
 3. **Comprimento e estabilidade.** As colunas do `SimWorld` têm comprimento `IPhaseSnapshot.EntityCapacity` (criadas pelo `Create`). As tabelas do #6 têm comprimento **≥ `EntityCapacity` da fase em curso** e são dimensionadas no `Preparar` (Decisão 6), porque `EntityCapacity` muda de fase para fase e um #6 pode ser reusado. Spans e `Hash` fatiam sempre por `IdCount`, nunca por `Length`. Dentro de uma fase **nenhum array é realocado**, e os spans obtidos no começo do `Step` continuam válidos no tick inteiro. Um id nascido mais tarde no mesmo tick fica fora do span já obtido; isso é coerente com "ids novos só agem a partir do sistema seguinte" (Emenda 6).
 4. **Scratch.** Todo scratch **deve** estar vazio ao fim de cada `Tick` (o #6 zera `acc` e o sinal do `Rugido` no passo 8; a cura não tem scratch: o `Curar` acumula direto em `curaPendente`, ADR-0005) e **deve** ser reescrito antes de ser lido no tick seguinte. É isso que permite deixá-lo fora do hash: um scratch que sobrevive ao tick é estado oculto e é bug. Um `Tick` que lança leva a `Broken` (Emenda 2), então um scratch sujo nunca alcança o tick seguinte. **Quem garante o invariante é o #6, em toda saída do `Step`**, inclusive o retorno antecipado sem `CombatActive` (GDD #6, passo 2.1), onde ele esvazia a fila e o `acc` antes de retornar. O #7 e o #8 só enfileiram com `CombatActive` (GDD #7, Regra 1), então a fila já chega vazia nesse caso; a regra vale mesmo assim, e o contrato de `Aplicar` com `!CombatActive` é do ADR-0005.
@@ -119,12 +119,12 @@ O #6 expõe `ICombatReadView` (em `Forja.Gameplay.Sim`) com `ReadOnlySpan<T>` da
 - O #6 não depende do #7: ele lê `classe`, `arquetipoId` e `tickNascimento` do `SimWorld`, nunca do #7 (sem ciclo).
 
 ### 6. Ciclo de vida e capacidade
-- Os arrays do #6 são alocados na construção do sistema (tela de carregamento). O #6 implementa `IPreparaFase` (`IdsDePreparacao = 0`) e, no `Preparar`, **realoca cada tabela se `Length < world.EntityCapacity`** (ainda é a tela de carregamento) e **zera todas as suas tabelas** (`Array.Clear(a, 0, a.Length)` ou `span.Clear()`, nunca a sobrecarga de um argumento, que não é garantida no perfil de API do projeto) e grava só as constantes não nulas (`ultimaDirecao`). Assim um #6 reusado entre fases dá o mesmo hash que um novo. O `Preparar` do #6 limpa só as próprias tabelas e nunca lê linhas de `Spawn`, então a ordem entre ele e o #3 não importa.
+- Os arrays do #6 são alocados na construção do sistema (tela de carregamento). O #6 implementa `IPreparaFase` (`IdsDePreparacao = 0`) e, no `Preparar`, **realoca cada tabela se `Length < world.EntityCapacity`** (ainda é a tela de carregamento) e **zera todas as suas tabelas** (`Array.Clear(a, 0, a.Length)` ou `span.Clear()`, nunca a sobrecarga de um argumento, que não é garantida no perfil de API do projeto) e grava só as constantes não nulas (`ultimaDirecao`). Assim um #6 reusado entre fases dá o mesmo hash que um novo. O `Preparar` do #6 limpa só as próprias tabelas e nunca lê linhas de `Spawn`, então a ordem entre ele e o #3 não importa. A ordem dos sistemas no tick é a do compositor, fixada na Emenda 19 do ADR-0001: **#7 → #8 → #6 → #3 → #16** (o #6 depende dela: o #7 lê o estado de ataque do fim do tick anterior, Decisão 5, e o #3 e o #16 rodam depois do passo 7b do #6). A ordem do `Preparar` é independente da ordem do tick e é a que a Emenda 19 também fixa.
 - As colunas compartilhadas não precisam de limpeza: o `Spawn` inicia a linha inteira, e linhas com id ≥ `IdCount` nunca são lidas nem hasheadas.
 - **Sem id reservado para o chefe** *(resolve a OQ-3 do #7; provisória)*: a conferência de capacidade do compositor (ADR-0001, item 6, com a margem de `CapacityMarginPct`) e o `total_spawns_7` máximo (F7 do #7) já garantem que o chefe cabe; se mesmo assim um `Spawn` `essential` for rejeitado, vale o caminho já decidido (`InternalFailure`, `EssentialSpawnRejected`). Reservar um id só complicaria o contador.
-- Capacidade da fila de golpes e do buffer de eventos: ADR-0005 (a fórmula de `cap_fila` é do GDD #6).
+- Capacidade da fila de golpes e do buffer de eventos: ADR-0005. A fórmula de `cap_fila` é do GDD #6 e o resultado chega ao #6 como `IPhaseSnapshot.QueueCapacity` (campo do `PhaseSnapshot`, ADR-0002; validado pelo #1); o `Preparar` aloca a fila com esse valor, na tela de carregamento.
 
-### 7. Emenda 17 ao ADR-0001 (pendente; só com aprovação do autor)
+### 7. Emenda 17 ao ADR-0001 (aplicada no ADR-0001 em 2026-11-06, com aprovação do autor)
 (a) `Spawn(faction, essential, xpValue, hp, x, y)` vira `Spawn(faction, essential, xpValue, hp, x, y, EntityClass entityClass, int archetypeId)`; o `SimWorld` carimba `tickNascimento` e `hpMax`; (b) o item 12 (hash) acrescenta `xpValue` e as quatro colunas, na ordem acima, e fixa que o percurso é por todo id < `IdCount`; (c) as Key Interfaces ganham as propriedades de leitura e `HpAndPosForWrite`; (d) o enum `EntityClass`; (e) o registro: `entity_table` ganha este ADR em `referenced_by` e tem o `write_access` revisto (HP e posição passam a ser só do #6; hoje "isimsystem-within-tick"); entram uma entrada em `state_ownership` para as colunas de combate (dono: #6) e um contrato `combat_read_view` em `interfaces` (Passo 6 da skill, só com aprovação). Nenhum hash gravado existe ainda, então a mudança de ordem do hash não invalida nada.
 
 ### Architecture Diagram
@@ -160,6 +160,8 @@ namespace Forja.Simulation
         public ReadOnlySpan<int> ArchetypeIds { get; }
         public ReadOnlySpan<int> BirthCombatTicks { get; }
         public ReadOnlySpan<float> HpMaxes { get; }
+        public ReadOnlySpan<int> XpValues { get; }       // Emenda 19 do ADR-0001: é por aqui que o #3 lê o xpValue da morte
+        public ReadOnlySpan<byte> Essentials { get; }    // 0 ou 1; IsEssential(id) do ADR-0001 continua valendo; filtrar por IsAlive(int) / span Alive
         public ReadOnlySpan<float> Hp { get; }
         public ReadOnlySpan<float> PosX { get; }  public ReadOnlySpan<float> PosY { get; }
         public ReadOnlySpan<float> PrevPosX { get; }  public ReadOnlySpan<float> PrevPosY { get; }
@@ -208,7 +210,7 @@ namespace Forja.Gameplay.Sim   // sem engine
 - O `Hash` do #6 **must** percorrer o bloco do herói e depois `World.Alive` por id crescente, campo a campo, `-0` normalizado, e **must never** incluir scratch nem linhas de mortos; **must never** hashear memória bruta de struct nem usar `GetHashCode`.
 - A vista **must** ser entregue por referência direta pelo compositor e **must** ter só propriedades de leitura; **must never** haver `static`, localizador ou reflexão. O consumidor **must** pegar cada span uma vez por tick (ou frame) numa variável local e **must never** guardá-lo em campo, lambda, coroutine ou `async`. Os limites de índice **must never** ser desligados: a checagem também protege o determinismo.
 - O #7 **must** ler o estado de ataque da vista como o do fim do tick anterior e **must never** escrever nele.
-- Posição e HP **must** ser gravados só pelo #6, por `HpAndPosForWrite`, uma chamada por `Tick`; `PrevPos` **must never** ser gravável fora do Core.
+- Posição e HP **must** ser gravados só pelo #6, por `HpAndPosForWrite`, uma chamada por `Tick`; `PrevPos` **must never** ser gravável fora do Core. **Única exceção do Core (Emenda 19 do ADR-0001, ADR-0001 L302):** no caminho do NaN (passo 6 da Regra 2 do GDD #2; Emenda 8 do ADR-0001) o Core regrava a posição da entidade e **grava HP = 0** na linha morta, para que um HP com NaN não fique numa linha que entra no hash do Core (a Decisão 4 percorre todo id < `IdCount`, vivo ou morto). Essa gravação só acontece nesse caminho, que leva a `FalhaInterna`; fora dele o Core nunca escreve HP.
 - Um enum de coluna (`EntityClass`, `estadoCombate`, `forma`) **must** ter valores explícitos, só crescer no final, e todo `switch` sobre ele **must** ter um `default` que lança.
 - Acrescentar uma coluna **compartilhada**, ou uma coluna escrita por outro sistema, **must** passar por emenda a este ADR; estado de outro sistema que o #6 lê **must** morar nesse sistema, com vista própria (ADR-0005).
 - O #6 **must** esvaziar a fila de golpes e o `acc` em toda saída do `Step`, também no retorno antecipado sem `CombatActive`.
@@ -288,12 +290,12 @@ namespace Forja.Gameplay.Sim   // sem engine
 
 ## Performance Implications
 - **CPU**: nenhuma alocação por `Tick`; acesso por índice sobre spans; o `Hash` (fora do `Tick`) percorre ~300 vivos × ~90 B ≈ 27 KB por chamada. O custo do `Tick` do #6 é medido no spike (OQ-14 do #6).
-- **Memory**: ~13 B/linha (compartilhadas) + ~76 B/linha (privadas) + ~9 B/linha (scratch) ≈ 98 B/linha; com `EntityCapacity` = 1124, ≈ 110 KB. Cálculo do autor, a confirmar no Profiler.
+- **Memory**: ~13 B/linha (compartilhadas) + ~76 B/linha (privadas) + ~9 B/linha (scratch) ≈ 98 B/linha; com `EntityCapacity` = 1124, ≈ 110 KB. Cálculo do autor, a confirmar no Profiler. **Soma ainda sem orçamento:** a fila de golpes (`cap_fila` × 28 B, ADR-0005), a `Arena` e os buffers de consulta do ADR-0006 somam-se a esses 110 KB, e o único orçamento existente (`phase_snapshot_memory_kb`, ADR-0002) não tem valor; o teto de memória do `Preparar` fica para o ADR de orçamento (ADR-0010) e para a medição do spike. Até lá, 110 KB é só a parcela deste ADR.
 - **Load Time**: alocação e `Array.Clear` de ~110 KB no `Preparar`/construção, na tela de carregamento; desprezível frente ao `Create` (ADR-0001, Verification Required 9).
 - **Network**: não se aplica.
 
 ## Migration Plan
-Nenhum código existe. Ordem: (1) aprovar e aplicar a Emenda 17 no ADR-0001; (2) o #3 e o #7 usam o novo `Spawn`; (3) o #6 cria as tabelas e a vista; (4) o #12 lê a vista; (5) os testes I12, D1, D3, D4 dos GDDs deixam de estar "BLOQ".
+Nenhum código existe. Ordem: (1) a Emenda 17 já está no ADR-0001 e a Emenda 19 acrescenta `XpValues`/`Essentials` e a ordem do compositor; (2) o #3 e o #7 usam o novo `Spawn`; (3) o #6 cria as tabelas e a vista; (4) o #12 lê a vista; (5) os testes I12, D1, D3, D4 dos GDDs deixam de estar "BLOQ".
 
 ## Validation Criteria
 - I12 do #7: `classe`, `arquetipoId`, `tickNascimento` corretos em cada spawn (inclusive o herói no `Preparar`, com `tickNascimento` = 0).
@@ -304,10 +306,13 @@ Nenhum código existe. Ordem: (1) aprovar e aplicar a Emenda 17 no ADR-0001; (2)
 - Reavaliar (com o jogo jogável): Alternativas 3 e 5; `hpMax` = HP inicial; o bloco do herói único; `iframes` por entidade.
 
 ## Related
-- Depende de `docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md` (Emenda 17 pendente) e `docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md`.
-- ADRs vizinhos ainda não escritos: ADR-0005 (pipeline de dano e eventos), ADR-0006 (vetor, geometria e consulta espacial).
+- Depende de `docs/architecture/adr-0001-simulacao-deterministica-float32-tick-30hz.md` (Emendas 17 e 19 aplicadas) e `docs/architecture/adr-0002-dados-e-balanceamento-snapshot-imutavel-gerado-no-build.md`.
+- ADRs vizinhos (`Proposed`): ADR-0005 (pipeline de dano e eventos), ADR-0006 (vetor, geometria e consulta espacial); ADR-0009 pede a este ADR a coluna `UltimoDanoTick` na vista (ainda não aplicada).
 - GDDs: `design/gdd/combate-e-dano.md`, `design/gdd/horda-waves-e-inimigos.md`, `design/gdd/simulacao-deterministica.md`, `design/gdd/fluxo-de-fase.md`.
 - `docs/architecture/architecture-review-2026-11-05.md` (Required ADRs, item 2).
+
+## Revisão de 2026-11-10 (conflitos da 3ª e 4ª passadas de `/architecture-review`)
+Sem mudança de desenho; contrato esclarecido e texto atualizado: (a) exceção do Core que grava HP = 0 no caminho do NaN, no texto do escritor único (Implementation Guidelines); (b) `XpValues` e `Essentials` nas Key Interfaces, para o #3 ler `xpValue`; (c) ordem do compositor #7 → #8 → #6 → #3 → #16 citada da Emenda 19 do ADR-0001 (Decisão 6); (d) `cap_fila` chega como `QueueCapacity` do `PhaseSnapshot` (ADR-0002); (e) nota de memória: a soma além dos 110 KB não tem orçamento; (f) títulos e referências "pendente" trocados por "aplicada". `UltimoDanoTick` (pedido do ADR-0009) é coerente com este ADR (coluna privada nova, exposta na vista; muda o hash do #6 e o golden hash) e **continua não aplicada**: só entra por emenda deste ADR, com aprovação do autor.
 
 ## Decisões provisórias (a reavaliar com o jogo jogável)
 `hpMax` = HP inicial; sem id reservado para o chefe; `iframes` por entidade e o resto do herói em um bloco único; SoA em vez de array de structs; Core faz o hash das quatro colunas compartilhadas; `DeathRecord` sem extensão (linhas de mortos legíveis até o fim da fase); `intentVel` como scratch; vista de leitura com defasagem de 1 tick para o #7; `arquetipoId` com espaço por classe; `cicloIdx` exposto na vista; `xpValue` no hash do Core.
